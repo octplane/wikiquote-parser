@@ -15,6 +15,21 @@ type Command struct {
   Parameters []string
 }
 
+type Book struct {
+  Title  string
+  Editor string
+  Year   int
+  Page   int
+  Isbn   string
+}
+
+type Quote struct {
+  Text   string
+  Author string
+  Book   Book
+  Topic  string
+}
+
 func markupExtractor(body string) []Command {
   markup, _ := regexp.Compile("(?s){{[^}]+}}")
 
@@ -23,8 +38,11 @@ func markupExtractor(body string) []Command {
   commands := make([]Command, len(strCommands))
 
   for i, cmd := range strCommands {
+    cmd = cmd[2 : len(cmd)-2]
     args := strings.Split(cmd, "|")
-    commands[i] = Command{Cmd: args[0][2:], Parameters: args[1:]}
+    cmd := strings.ToLower(args[0])
+
+    commands[i] = Command{Cmd: cmd, Parameters: args[1:]}
   }
   return commands
 }
@@ -57,8 +75,23 @@ func main() {
     page := iter.Node()
     content, _ := textXPath.String(page)
     commands := markupExtractor(content)
+    var buffer *Command = nil
     for _, cmd := range commands {
-      fmt.Println(cmd)
+      if len(cmd.Cmd) > 2 && cmd.Cmd[0:4] == "réf" {
+        if buffer != nil {
+          fmt.Println("Quote")
+        } else {
+          fmt.Println("Found ref without quote")
+          fmt.Println(cmd)
+        }
+        buffer = nil
+      } else if strings.Index(cmd.Cmd, "citation") == 0 {
+        buffer = &cmd
+      } else {
+        fmt.Println("Unknown command")
+        fmt.Println(cmd.Cmd)
+        buffer = nil
+      }
     }
   }
 }

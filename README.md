@@ -27,7 +27,7 @@ Sample quote and surroundings
 {{Choisie citation du jour|puce=*|année=2010|mois=mars|jour=1|commentaire=|}}
 ```
 
-Note that there is no formal linking between the quote and its reference, except from the spatial proximity.
+Note that there is no formal linking between the quote and its reference, except from the spatial proximity. This already makes me sad.
 
 ## Intended Output
 
@@ -36,7 +36,7 @@ Note that there is no formal linking between the quote and its reference, except
 - author: `Alain`
 - booktitle: `Éléments de philosophie (Gallimard)`
 - bookeditor: `Librairie Larousse (Dictionnaire des citations françaises et étrangères)`
-- bookyear: `1980`
+- bookyear: `1980
 - bookpage: `3`
 - isbn: `2-03-340809-4`
 - topic: `Amour`
