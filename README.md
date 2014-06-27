@@ -36,10 +36,10 @@ Note that there is no formal linking between the quote and its reference, except
 - author: `Alain`
 - booktitle: `Éléments de philosophie (Gallimard)`
 - bookeditor: `Librairie Larousse (Dictionnaire des citations françaises et étrangères)`
-- bookyear: 1980
-- bookpage: 3
-- isbn: 2-03-340809-4
-- topic: Amour
+- bookyear: `1980`
+- bookpage: `3`
+- isbn: `2-03-340809-4`
+- topic: `Amour`
 
 # Usage
 
