@@ -202,14 +202,15 @@ func ExtractStats(commands []Command) {
 
   var maxArgsOcc int
   for _, pl := range sortMapByValue(commandPopularity) {
-    fmt.Printf("## %s (%d occ.)\n", pl.Key, pl.Value)
+    fmt.Printf("### %s (%d occ.)\n", pl.Key, pl.Value)
+    total := pl.Value
     maxArgsOcc = 0
     for _, ar := range sortMapByValue(argsPopularity[pl.Key]) {
       if ar.Value > maxArgsOcc {
         maxArgsOcc = ar.Value
       }
-      if ar.Value > maxArgsOcc/10 {
-        fmt.Printf("- %s (%d occ.)\n", ar.Key, ar.Value)
+      if ar.Value > maxArgsOcc/10 && 100*ar.Value/total > 1 {
+        fmt.Printf("- %s (%d%%)\n", ar.Key, 100*ar.Value/total)
       }
     }
   }
