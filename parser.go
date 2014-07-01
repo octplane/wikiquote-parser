@@ -115,6 +115,13 @@ func markupExtractor(body string) []Command {
     }
 
     cmd := strings.TrimSpace(strings.ToLower(arguments[0]))
+
+    // Parse special "defaultsort:", "if:", "msg:" commands
+    if strings.Index(cmd, ":") != -1 {
+      cmd = cmd[0:strings.Index(cmd, ":")]
+      // FIXME inject arguments in Command anyway
+    }
+
     // Ignore the empty command
     if cmd != "" {
       commands[pos] = Command{Cmd: cmd, Arguments: arguments[1:], NamedArguments: kvArguments}
@@ -193,10 +200,17 @@ func ExtractStats(commands []Command) {
     }
   }
 
+  var maxArgsOcc int
   for _, pl := range sortMapByValue(commandPopularity) {
     fmt.Printf("## %s (%d occ.)\n", pl.Key, pl.Value)
+    maxArgsOcc = 0
     for _, ar := range sortMapByValue(argsPopularity[pl.Key]) {
-      fmt.Printf("- %s (%d occ.)\n", ar.Key, ar.Value)
+      if ar.Value > maxArgsOcc {
+        maxArgsOcc = ar.Value
+      }
+      if ar.Value > maxArgsOcc/10 {
+        fmt.Printf("- %s (%d occ.)\n", ar.Key, ar.Value)
+      }
     }
   }
 }
@@ -224,7 +238,7 @@ func main() {
   if err != nil {
     log.Fatal(err)
   }
-  commands := make([]Command, 100000)
+  commands := make([]Command, 0)
   iter := pageXPath.Iter(root)
   for iter.Next() {
     page := iter.Node()
