@@ -131,6 +131,17 @@ func markupExtractor(body string) []Command {
   return commands
 }
 
+func cleanup(in string) string {
+  return strings.Replace(
+    strings.Replace(
+      strings.Replace(
+        strings.Replace(
+          strings.Replace(in, "[[", "", -1), "]]", "", -1),
+        "<poem>", "", -1),
+      "</poem>", "", -1),
+    "\n", " ", -1)
+}
+
 func BuildQuote(qCommand Command, reference Command) {
   quote, hasQuote := qCommand.NamedArguments["citation"]
   if !hasQuote {
@@ -140,14 +151,16 @@ func BuildQuote(qCommand Command, reference Command) {
 
   author := reference.ArgOrEmpty("auteur")
   title := reference.ArgOrEmpty("titre")
-  page := reference.ArgOrEmpty("page")
-  editor := reference.ArgOrEmpty("éditeur")
-  year := reference.ArgOrEmpty("année")
+  // page := reference.ArgOrEmpty("page")
+  // editor := reference.ArgOrEmpty("éditeur")
+  // year := reference.ArgOrEmpty("année")
   isbn := reference.ArgOrEmpty("isbn")
 
-  if quote == "" || author == "" || title == "" || page == "" || editor == "" || year == "" || isbn == "" {
-    fmt.Println("Some fields are missing")
-    fmt.Println("", reference)
+  if quote == "" || author == "" || title == "" || isbn == "" {
+  } else {
+    if len(quote) < 130 {
+      fmt.Printf("%s\t%s\t%s\t%s\n", cleanup(quote), cleanup(author), title, isbn)
+    }
   }
 
 }
@@ -155,18 +168,18 @@ func BuildQuote(qCommand Command, reference Command) {
 func ExtractQuotes(commands []Command) {
   var buffer *Command = nil
   for ix, cmd := range commands {
-    if len(cmd.Cmd) > 2 && cmd.Cmd[0:4] == "réf" {
+    if len(cmd.Cmd) > 3 && cmd.Cmd[0:4] == "réf" {
       if buffer != nil {
         BuildQuote(*buffer, cmd)
       } else {
-        fmt.Println("Found ref without quote")
-        fmt.Println(cmd)
+        // fmt.Println("Found ref without quote")
+        // fmt.Println(cmd)
       }
       buffer = nil
     } else if strings.Index(cmd.Cmd, "citation") == 0 {
       buffer = &commands[ix]
     } else {
-      fmt.Println("Unknown command:", cmd.Cmd)
+      // fmt.Println("Unknown command:", cmd.Cmd)
       buffer = nil
     }
   }
@@ -246,5 +259,6 @@ func main() {
     content, _ := textXPath.String(page)
     commands = append(commands, markupExtractor(content)...)
   }
-  ExtractStats(commands)
+  // ExtractStats(commands)
+  ExtractQuotes(commands)
 }
