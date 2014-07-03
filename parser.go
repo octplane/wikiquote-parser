@@ -13,6 +13,7 @@ import (
 
 type Command struct {
   Cmd            string
+  PageTitle      string
   Arguments      []string
   NamedArguments map[string]string
 }
@@ -81,7 +82,7 @@ func sortMapByValue(m map[string]int) PairList {
   return p
 }
 
-func markupExtractor(body string) []Command {
+func markupExtractor(title string, body string) []Command {
   markup := regexp.MustCompile("(?s){{[^}]+}}")
   param := regexp.MustCompile("([^=]+)=(.*)")
 
@@ -124,7 +125,7 @@ func markupExtractor(body string) []Command {
 
     // Ignore the empty command
     if cmd != "" {
-      commands[pos] = Command{Cmd: cmd, Arguments: arguments[1:], NamedArguments: kvArguments}
+      commands[pos] = Command{Cmd: cmd, PageTitle: title, Arguments: arguments[1:], NamedArguments: kvArguments}
       pos += 1
     }
   }
@@ -159,7 +160,7 @@ func BuildQuote(qCommand Command, reference Command) {
   if quote == "" || author == "" || title == "" || isbn == "" {
   } else {
     if len(quote) < 130 {
-      fmt.Printf("%s\t%s\t%s\t%s\n", cleanup(quote), cleanup(author), title, isbn)
+      fmt.Printf("%s\t%s\t%s\t%s\t%s\n", qCommand.PageTitle, cleanup(quote), cleanup(author), title, isbn)
     }
   }
 
@@ -232,6 +233,8 @@ func ExtractStats(commands []Command) {
 func main() {
   pageXPath := xmlpath.MustCompile("/mediawiki/page")
   textXPath := xmlpath.MustCompile(("revision/text"))
+  titleXPath := xmlpath.MustCompile("title")
+
   fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
   // fi, err := os.Open("sample.xml")
 
@@ -257,7 +260,8 @@ func main() {
   for iter.Next() {
     page := iter.Node()
     content, _ := textXPath.String(page)
-    commands = append(commands, markupExtractor(content)...)
+    title, _ := titleXPath.String(page)
+    commands = append(commands, markupExtractor(title, content)...)
   }
   // ExtractStats(commands)
   ExtractQuotes(commands)
