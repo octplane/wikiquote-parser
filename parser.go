@@ -327,6 +327,7 @@ func lexLeftTemplate(l *lexer) stateFn {
 func lexTemplateName(l *lexer) stateFn {
   l.refuse("|")
   l.emit(itemTemplateName)
+  l.next()
   return lexLeftTemplate
 }
 
