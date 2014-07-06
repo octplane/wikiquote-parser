@@ -96,6 +96,7 @@ const (
 	itemError = iota
 	templateName
 	templateEnd
+	variableName
 	itemText
 	controlStruct
 	itemEOF
@@ -122,7 +123,9 @@ func (i item) String() string {
 	case templateEnd:
 		return fmt.Sprintf(" %s>>\n", i.val)
 	case templateName:
-		return fmt.Sprintf("<<Name:%s", i.val)
+		return fmt.Sprintf("<<Name:%s\n", i.val)
+	case variableName:
+		return fmt.Sprintf("\tvar:%s \n", i.val)
 	case itemText:
 		if len(i.val) > 10 {
 			return fmt.Sprintf("%.10q...\n", i.val)
@@ -153,6 +156,10 @@ type lexer struct {
 func (l *lexer) emit(t itemType) {
 	l.items <- item{t, l.input[l.start:l.pos]}
 	l.start = l.pos
+}
+
+func (l *lexer) emitItem(t item) {
+	l.items <- t
 }
 
 // run lexes the input by executing state functions until
@@ -264,7 +271,7 @@ func lex(name, input string) *lexer {
 		name:  name,
 		input: input,
 		state: lexText,
-		items: make(chan item, 2), // Two items sufficient.
+		items: make(chan item, 10), // Max number of stacked items in the parse chain
 	}
 	return l
 }
@@ -312,30 +319,56 @@ func lexTemplateStart(l *lexer) stateFn {
 	// eat the template start
 	l.refuse("|}")
 	l.emit(templateName)
-	if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
-		return inTemplate
-	}
-	// this is the usual parameter matching.
-	l.accept("|")
-	l.emit(controlStruct)
 	return inTemplate
 }
 
 func inTemplate(l *lexer) stateFn {
-	for {
-		if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
-			if l.pos > l.start {
-				l.emit(templateEnd)
-				l.pos += 2
-				l.emit(controlStruct)
-			}
-			return lexText // Next state.
+	l.refuse("|}")
+	if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
+		if l.pos > l.start {
+			l.emit(templateEnd)
+			l.start += 2
 		}
-		n := l.next()
+		return lexText // Next state.
+	} else if strings.HasPrefix(l.input[l.pos:], "|") {
+		if l.start < l.pos {
+			// l.refuse("=")
+			// l.emit(variableName)
+			// l.accept("=")
+			// l.emit(controlStruct)
+			fmt.Println("Starting sub parser for", l.input[l.start:l.pos])
+			newLexer := lex("Variable Lexer", l.input[l.start:l.pos])
+			halt := false
+			for !halt {
+				it := newLexer.nextItem()
+				switch it.typ {
+				case itemEOF:
+					halt = true
+				}
 
-		if n.typ == eof {
-			break
+				if halt != true {
+					l.emitItem(it)
+				}
+			}
+			l.start = l.pos
 		}
+		l.accept("|")
+		// l.accept("=")
+		// fmt.Println("Starting sub parser for", l.input[l.start:l.pos])
+		// newLexer := lex("Variable Lexer", l.input[l.start:l.pos])
+		// halt := false
+		// for !halt {
+		// 	it := newLexer.nextItem()
+		// 	switch it.typ {
+		// 	case itemEOF:
+		// 		halt = true
+		// 	}
+
+		// 	if halt != true {
+		// 		l.emitItem(it)
+		// 	}
+		// }
+		return inTemplate
 	}
 	return nil
 }
