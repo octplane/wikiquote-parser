@@ -47,11 +47,17 @@ func testMain(*testing.T) {
   ExtractQuotes(commands)
 }
 
-func TestSample1(*testing.T) {
+func TestSample1(t *testing.T) {
   content, err := ioutil.ReadFile("./tests/sample1.txt")
   if err != nil {
     panic(err)
   }
-  cmds := Parse(string(content))
-  fmt.Println(cmds)
+  tokens := Tokenize(string(content))
+  ex1 := "==== [[Léon Blum]] ====\n"
+  if tokens[0].val != ex1 && tokens[0].typ != itemText {
+    t.Errorf("Unexpected text block. Expected Text: %q, got %s", ex1, tokens[0].String())
+  }
+
+  tree := Parse(tokens)
+  fmt.Println(tree)
 }

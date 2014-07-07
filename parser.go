@@ -79,6 +79,24 @@ func sortMapByValue(m map[string]int) PairList {
   return p
 }
 
+//// Parser
+
+type Node struct {
+  typ     nodeType
+  val     string
+  subtree []Node
+}
+
+type nodeType int
+
+const (
+  nodeError = iota
+  nodeTree
+  nodeText
+  nodeLink
+  nodeTemplate
+)
+
 /// LEXER
 
 type item struct {
@@ -91,9 +109,13 @@ type itemType int
 const (
   itemError = iota
   templateName
+  templateStart
   templateEnd
+  linkStart
+  linkEnd
   variableName
   itemText
+  itemPipe
   controlStruct
   itemEOF
 )
@@ -111,26 +133,55 @@ const (
 )
 
 func (i item) String() string {
+  desc := i.typ.String()
   switch i.typ {
   case itemEOF:
     return "EOF"
   case itemError:
     return i.val
+  case templateStart:
+    return fmt.Sprintf("%s %s\n", desc, i.val)
   case templateEnd:
-    return fmt.Sprintf("IT: Template end: %s>>\n", i.val)
-  case templateName:
-    return fmt.Sprintf("IT: Template name: %s\n", i.val)
-  case variableName:
-    return fmt.Sprintf("IT: Variable: \tvar:%s \n", i.val)
+    return fmt.Sprintf("%s %s\n", desc, i.val)
+  case linkStart:
+    return fmt.Sprintf("%s\n", desc)
+  case linkEnd:
+    return fmt.Sprintf("%s\n", desc)
   case itemText:
     if len(i.val) > 10 {
-      return fmt.Sprintf("IT: Text: %.10q...\n", i.val)
+      return fmt.Sprintf("%s: \"%.10s...\"\n", desc, i.val)
     }
-    return fmt.Sprintf("IT: Text: %q\n", i.val)
+    return fmt.Sprintf("%s: %q\n", desc, i.val)
+  case itemPipe:
+    return fmt.Sprintf("%s\n", desc)
   case controlStruct:
-    return "IT: control\n"
+    return fmt.Sprintf("%s %s\n", desc, i.val)
   }
-  return fmt.Sprintf("IT: Unknown item %+v\n", i.val)
+  return fmt.Sprintf("Unknown item %+v\n", desc, i.val)
+}
+
+func (itt itemType) String() string {
+  switch itt {
+  case itemEOF:
+    return "EOF"
+  case itemError:
+    return "Error"
+  case templateStart:
+    return "Template start"
+  case templateEnd:
+    return "Template end"
+  case linkStart:
+    return "Link start"
+  case linkEnd:
+    return "Link end"
+  case itemText:
+    return "Text"
+  case itemPipe:
+    return "Pipe"
+  case controlStruct:
+    return "Control struct"
+  }
+  return "??"
 }
 
 // stateFn represents the state of the scanner
@@ -150,12 +201,9 @@ type lexer struct {
 
 // emit passes an item back to the client.
 func (l *lexer) emit(t itemType) {
-  l.items <- item{t, l.input[l.start:l.pos]}
+  it := item{t, l.input[l.start:l.pos]}
+  l.items <- it
   l.start = l.pos
-}
-
-func (l *lexer) emitItem(t item) {
-  l.items <- t
 }
 
 // run lexes the input by executing state functions until
@@ -233,34 +281,6 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
   return nil
 }
 
-// func lexNumber(l *lexer) stateFn {
-//   // Optional leading sign.
-//   l.accept("+-")
-//   // Is it hex?
-//   digits := "0123456789"
-//   if l.accept("0") && l.accept("xX") {
-//     digits = "0123456789abcdefABCDEF"
-//   }
-//   l.acceptRun(digits)
-//   if l.accept(".") {
-//     l.acceptRun(digits)
-//   }
-//   if l.accept("eE") {
-//     l.accept("+-")
-//     l.acceptRun("0123456789")
-//   }
-//   // Is it imaginary?
-//   l.accept("i")
-//   // Next thing mustn't be alphanumeric.
-//   if isAlphaNumeric(l.peek()) {
-//     l.next()
-//     return l.errorf("bad number syntax: %q",
-//       l.input[l.start:l.pos])
-//   }
-//   l.emit(itemNumber)
-//   return lexInsideAction
-// }
-
 // lex creates a new scanner for the input string.
 func lex(name, input string) *lexer {
   l := &lexer{
@@ -285,20 +305,46 @@ func (l *lexer) nextItem() item {
   panic("not reached")
 }
 
-func lexText(l *lexer) stateFn {
-  for {
-    if strings.HasPrefix(l.input[l.pos:], leftTemplate) {
+const leftTemplate = "{{"
+const rightTemplate = "}}"
+const leftLink = "[["
+const rightLink = "]]"
+const pipe = "|"
+
+var strToToken map[string]itemType
+
+func init() {
+  strToToken = map[string]itemType{
+    leftTemplate:  templateStart,
+    rightTemplate: templateEnd,
+    leftLink:      linkStart,
+    rightLink:     linkEnd,
+    pipe:          itemPipe,
+  }
+}
+
+func (l *lexer) markupMatcher() {
+  for st, it := range strToToken {
+    if strings.HasPrefix(l.input[l.pos:], st) {
+      // fmt.Printf("In : %.10q\n", l.input[l.pos:])
       if l.pos > l.start {
         l.emit(itemText)
       }
-      l.accept("{")
-      l.accept("{")
-      l.emit(controlStruct)
-      return lexTemplateStart // Next state.
+      l.pos += len(st)
+      l.emit(it)
+      break
     }
+  }
+}
+
+func lexText(l *lexer) stateFn {
+  for {
+    l.markupMatcher()
+
     if l.next().typ == eof {
       break
     }
+    return lexText
   }
   // Correctly reached EOF.
   if l.pos > l.start {
@@ -306,62 +352,6 @@ func lexText(l *lexer) stateFn {
   }
   l.emit(itemEOF) // Useful to make EOF a token.
   return nil      // Stop the run loop.
-}
-
-const leftTemplate = "{{"
-const rightTemplate = "}}"
-
-func lexTemplateStart(l *lexer) stateFn {
-  // eat the template start
-  l.refuse("|}")
-  l.emit(templateName)
-  return inTemplate
-}
-
-func inTemplate(l *lexer) stateFn {
-  l.refuse("|}")
-  if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
-    if l.pos > l.start {
-      l.emit(templateEnd)
-      l.start += 2
-    }
-    return lexText // Next state.
-  } else if strings.HasPrefix(l.input[l.pos:], "|") {
-    if l.start < l.pos {
-      newLexer := lex("Variable Lexer", l.input[l.start:l.pos])
-      halt := false
-      for !halt {
-        it := newLexer.nextItem()
-        switch it.typ {
-        case itemEOF:
-          halt = true
-        }
-
-        if halt != true {
-          l.emitItem(it)
-        }
-      }
-      l.start = l.pos
-    }
-    l.accept("|")
-    // l.accept("=")
-    // fmt.Println("Starting sub parser for", l.input[l.start:l.pos])
-    // newLexer := lex("Variable Lexer", l.input[l.start:l.pos])
-    // halt := false
-    // for !halt {
-    // 	it := newLexer.nextItem()
-    // 	switch it.typ {
-    // 	case itemEOF:
-    // 		halt = true
-    // 	}
-
-    // 	if halt != true {
-    // 		l.emitItem(it)
-    // 	}
-    // }
-    return inTemplate
-  }
-  return nil
 }
 
 // const leftMeta = "{{"
@@ -439,8 +429,8 @@ func inTemplate(l *lexer) stateFn {
 
 ////
 
-func Parse(body string) []item {
-  ret := make([]item, 1000)
+func Tokenize(body string) []item {
+  ret := make([]item, 0)
   l := lex("", body)
   go l.run()
 
@@ -455,6 +445,103 @@ func Parse(body string) []item {
       break
     }
   }
+  return ret
+}
+
+type parser struct {
+  items []item
+  start int
+  pos   int
+}
+
+func create_parser(items []item) *parser {
+  p := &parser{
+    items: items,
+    start: 0,
+    pos:   0,
+  }
+  return p
+}
+
+func Parse(items []item) []Node {
+  p := create_parser(items)
+  return p.Parse()
+}
+
+func (p *parser) CurrentItem() item {
+  return p.items[p.pos]
+}
+
+func (p *parser) nextItem() item {
+  ret := p.items[p.pos]
+  p.pos += 1
+  return ret
+}
+
+func (p *parser) nextItemOfTypesOrSyntaxError(types ...itemType) item {
+  it := p.nextItem()
+  exp := make([]string, 0)
+
+  for _, typ := range types {
+    if it.typ == itemType(typ) {
+      p.pos += 1
+      return it
+    }
+    exp = append(exp, itemType(typ).String())
+  }
+  panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.val, exp, it.typ.String()))
+}
+
+func (p *parser) backup() {
+  p.pos -= 1
+}
+
+func (p *parser) Parse() []Node {
+  ret := make([]Node, 0)
+  for p.pos < len(p.items) {
+    it := p.CurrentItem()
+    switch it.typ {
+    case itemText:
+      n := Node{typ: nodeText, val: it.val}
+      ret = append(ret, n)
+    case linkStart:
+      n := Node{typ: nodeLink, subtree: p.ParseLink()}
+      ret = append(ret, n)
+    }
+    p.pos += 1
+  }
+  return ret
+}
+
+func (p *parser) inspect(ahead int) {
+  fmt.Printf("Peeking ahead for %d elements\n", ahead)
+  for pos, content := range p.items[p.pos:] {
+    if pos > ahead {
+      break
+    }
+    fmt.Printf(content.String())
+  }
+  fmt.Println("End of Peek")
+}
+
+func (p *parser) ParseLink() []Node {
+  ret := make([]Node, 0)
+  // eat the start of the link
+  link := p.nextItemOfTypesOrSyntaxError(linkStart)
+
+  link = p.nextItemOfTypesOrSyntaxError(linkEnd, itemText)
+  // empty link
+  if link.typ == linkEnd {
+    return ret
+  }
+  pipeOrRightLink := p.nextItemOfTypesOrSyntaxError(itemPipe, linkEnd)
+  if pipeOrRightLink.typ == itemPipe {
+    text := p.nextItemOfTypesOrSyntaxError(itemText)
+    ret = append(ret, Node{typ: nodeLink, val: text.val, subtree: nil})
+  } else if pipeOrRightLink.typ == linkEnd {
+    ret = append(ret, Node{typ: nodeLink, val: link.val, subtree: nil})
+  }
+
   return ret
 }
 
