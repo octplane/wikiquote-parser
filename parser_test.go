@@ -123,3 +123,27 @@ func TestTemplate3(t *testing.T) {
 		t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].params["author"])
 	}
 }
+
+// func TestTemplate4(t *testing.T) {
+// 	temp := "citation"
+// 	txt := "Tant va la cruche à l'eau qu'à la fin tu me les brises."
+// 	aut := "[[Les Inconnus]]"
+
+// 	tree := Parse(Tokenize(fmt.Sprintf("{{%s|citation=%s|author=%s}}", temp, txt, aut)))
+// 	if len(tree) != 1 {
+// 		t.Errorf("Unexpected node count, expected 1 node, got %d nodes.", len(tree))
+// 	}
+
+// 	if tree[0].typ != nodeTemplate {
+// 		t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].typ.String())
+// 	}
+// 	if tree[0].params["name"] != temp {
+// 		t.Errorf("Unexpected name, expected name: wanted %q, got %q", temp, tree[0].params["name"])
+// 	}
+// 	if tree[0].params["citation"] != txt {
+// 		t.Errorf("Unexpected citation params: wanted %q, got %q", txt, tree[0].params["citation"])
+// 	}
+// 	if tree[0].params["author"] != aut {
+// 		t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].params["author"])
+// 	}
+// }

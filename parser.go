@@ -428,6 +428,14 @@ func (p *parser) nextItem() item {
 	return ret
 }
 
+func (p *parser) peekItem() item {
+  return p.items[p.pos]
+}
+
+func (p *parser) next() {
+  p.pos += 1
+}
+
 func (p *parser) nextItemOfTypesOrSyntaxError(types ...itemType) item {
 	it := p.nextItem()
 	exp := make([]string, 0)
@@ -466,14 +474,14 @@ func (p *parser) Parse() []Node {
 }
 
 func (p *parser) inspect(ahead int) {
-	fmt.Printf("Peeking ahead for %d elements\n", ahead)
+	fmt.Printf("------ Peeking ahead for %d elements\n", ahead)
 	for pos, content := range p.items[p.pos:] {
 		if pos > ahead {
 			break
 		}
 		fmt.Printf(content.String())
 	}
-	fmt.Println("End of Peek")
+	fmt.Println("------ End of Peek")
 }
 
 func (p *parser) ParseLink() Node {
@@ -508,23 +516,24 @@ func (p *parser) ParseTemplate() Node {
 	cont := true
 
 	for cont {
-		elt := p.nextItemOfTypesOrSyntaxError(itemPipe, itemText, templateEnd)
-		if elt.typ == templateEnd {
-			cont = false
-		} else if elt.typ == itemPipe {
-			// nothing !
-		} else {
-			ix := strings.Index(elt.val, "=")
+		elt := p.peekItem()
+    switch elt.typ {
+    case templateEnd:
+      p.next()
+      return ret
+    case itemPipe:
+      p.next()
+    case itemText:
+      p.next()
+      ix := strings.Index(elt.val, "=")
       if ix != -1 {
         k := elt.val[:ix]
         v := elt.val[ix+1:]
         ret.params[k] = v
       } else {
         ret.val = elt.val
-        elt = p.nextItemOfTypesOrSyntaxError(templateEnd)
-        cont = false
       }
-		}
+    }
 	}
 
 	return ret
