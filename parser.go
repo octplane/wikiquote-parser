@@ -539,6 +539,10 @@ func (p *parser) ParseTemplate() Node {
 	return ret
 }
 
+func (p *parser) SubParse(source string) Node[] {
+  return Node{typ:itemText, val:source}
+}
+
 func markupExtractor(title string, body string) []Command {
 
 	l := lex(title, body)
