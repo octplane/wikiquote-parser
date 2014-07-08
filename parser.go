@@ -84,7 +84,7 @@ func sortMapByValue(m map[string]int) PairList {
 type Node struct {
 	typ     nodeType
 	val     string
-	params  map[string]string
+	params  map[string][]Node
 	subtree []Node
 }
 
@@ -94,6 +94,10 @@ func (n *Node) String() string {
 		return fmt.Sprintf("%s", n.val)
 	}
 	return fmt.Sprintf("%s[%s]", n.typ.String(), n.params)
+}
+
+func (n *Node) StringParam(k string) string {
+  return n.params[k][0].val
 }
 
 type nodeType int
@@ -493,12 +497,12 @@ func (p *parser) ParseLink() Node {
 	if link.typ == linkEnd {
 		return ret
 	}
-	ret.params = make(map[string]string)
-	ret.params["link"] = link.val
+	ret.params = make(map[string][]Node)
+	ret.params["link"] = p.Subparse(link.val)
 	pipeOrRightLink := p.nextItemOfTypesOrSyntaxError(itemPipe, linkEnd)
 	if pipeOrRightLink.typ == itemPipe {
 		text := p.nextItemOfTypesOrSyntaxError(itemText)
-		ret.params["text"] = text.val
+		ret.params["text"] = p.Subparse(text.val)
 	}
 
 	return ret
@@ -510,8 +514,8 @@ func (p *parser) ParseTemplate() Node {
 	elt := p.nextItemOfTypesOrSyntaxError(templateStart)
 	elt = p.nextItemOfTypesOrSyntaxError(itemText)
 
-	ret.params = make(map[string]string)
-	ret.params["name"] = elt.val
+	ret.params = make(map[string][]Node)
+	ret.params["name"] = p.Subparse(elt.val)
 
 	cont := true
 
@@ -529,7 +533,7 @@ func (p *parser) ParseTemplate() Node {
       if ix != -1 {
         k := elt.val[:ix]
         v := elt.val[ix+1:]
-        ret.params[k] = v
+        ret.params[k] = p.Subparse(v)
       } else {
         ret.val = elt.val
       }
@@ -539,8 +543,9 @@ func (p *parser) ParseTemplate() Node {
 	return ret
 }
 
-func (p *parser) SubParse(source string) Node[] {
-  return Node{typ:itemText, val:source}
+func (p *parser) Subparse(source string) []Node {
+  r := []Node{Node{typ:itemText, val:source}}
+  return r
 }
 
 func markupExtractor(title string, body string) []Command {

@@ -56,11 +56,11 @@ func TestLinkParser(t *testing.T) {
 	if tree[0].typ != nodeLink {
 		t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].typ.String())
 	}
-	if tree[0].params["link"] != lnk {
-		t.Error("Unexpected link, expected link to %q, got %q", lnk, tree[0].params["link"])
+	if tree[0].StringParam("link") != lnk {
+		t.Error("Unexpected link, expected link to %q, got %q", lnk, tree[0].StringParam("link"))
 	}
-	if tree[0].params["text"] != text {
-		t.Error("Unexpected link, expected text link to %q, got %q", text, tree[0].params["text"])
+	if tree[0].StringParam("text") != text {
+		t.Error("Unexpected link, expected text link to %q, got %q", text, tree[0].StringParam("text"))
 	}
 }
 
@@ -75,8 +75,8 @@ func TestTemplate(t *testing.T) {
 	if tree[0].typ != nodeTemplate {
 		t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].typ.String())
 	}
-	if tree[0].params["name"] != temp {
-		t.Errorf("Unexpected name, expected name to %q, got %q", temp, tree[0].params["name"])
+	if tree[0].StringParam("name") != temp {
+		t.Errorf("Unexpected name, expected name to %q, got %q", temp, tree[0].StringParam("name"))
 	}
 }
 
@@ -92,8 +92,8 @@ func TestTemplate2(t *testing.T) {
 	if tree[0].typ != nodeTemplate {
 		t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].typ.String())
 	}
-	if tree[0].params["name"] != temp {
-		t.Errorf("Unexpected name, expected name to %q, got %q", temp, tree[0].params["name"])
+	if tree[0].StringParam("name") != temp {
+		t.Errorf("Unexpected name, expected name to %q, got %q", temp, tree[0].StringParam("name"))
 	}
 	if tree[0].val != txt {
 		t.Errorf("Unexpected value to %q, got %q", txt, tree[0].val)
@@ -113,14 +113,14 @@ func TestTemplate3(t *testing.T) {
 	if tree[0].typ != nodeTemplate {
 		t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].typ.String())
 	}
-	if tree[0].params["name"] != temp {
-		t.Errorf("Unexpected name, expected name: wanted %q, got %q", temp, tree[0].params["name"])
+	if tree[0].StringParam("name") != temp {
+		t.Errorf("Unexpected name, expected name: wanted %q, got %q", temp, tree[0].StringParam("name"))
 	}
-	if tree[0].params["citation"] != txt {
-		t.Errorf("Unexpected citation params: wanted %q, got %q", txt, tree[0].params["citation"])
+	if tree[0].StringParam("citation") != txt {
+		t.Errorf("Unexpected citation params: wanted %q, got %q", txt, tree[0].StringParam("citation"))
 	}
-	if tree[0].params["author"] != aut {
-		t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].params["author"])
+	if tree[0].StringParam("author") != aut {
+		t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].StringParam("author"))
 	}
 }
 
