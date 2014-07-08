@@ -457,7 +457,7 @@ func (p *parser) backup() {
 	p.pos -= 1
 }
 
-func (p *parser) Parse() []Node {
+func (p *parser) Parse(exitTypes ...itemType) []Node {
 	ret := make([]Node, 0)
 	for p.pos < len(p.items) {
 		it := p.CurrentItem()
@@ -472,6 +472,11 @@ func (p *parser) Parse() []Node {
 			n := p.ParseTemplate()
 			ret = append(ret, n)
 		}
+    for _, typ := range exitTypes {
+      if it.typ == itemType(typ) {
+        return ret
+      }
+    }
 		p.pos += 1
 	}
 	return ret
@@ -533,7 +538,7 @@ func (p *parser) ParseTemplate() Node {
       if ix != -1 {
         k := elt.val[:ix]
         v := elt.val[ix+1:]
-        ret.params[k] = p.Subparse(v)
+        ret.params[k] = p.Subparse(v, itemPipe, templateEnd)
       } else {
         ret.val = elt.val
       }
@@ -543,8 +548,10 @@ func (p *parser) ParseTemplate() Node {
 	return ret
 }
 
-func (p *parser) Subparse(source string) []Node {
-  r := []Node{Node{typ:itemText, val:source}}
+func (p *parser) Subparse(source string, until ...itemType) []Node {
+  fmt.Printf("subparsing %s\n", source)
+  r := p.Parse(until... )
+  //[]Node{Node{typ:itemText, val:source}}
   return r
 }
 
