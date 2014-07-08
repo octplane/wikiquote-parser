@@ -84,7 +84,16 @@ func sortMapByValue(m map[string]int) PairList {
 type Node struct {
   typ     nodeType
   val     string
+  params  map[string]string
   subtree []Node
+}
+
+func (n *Node) String() string {
+  switch n.typ {
+  case nodeText:
+    return fmt.Sprintf("%s", n.val)
+  }
+  return fmt.Sprintf("Link[%s]", n.params)
 }
 
 type nodeType int
@@ -96,6 +105,22 @@ const (
   nodeLink
   nodeTemplate
 )
+
+func (n nodeType) String() string {
+  switch n {
+  case nodeError:
+    return "Err"
+  case nodeTree:
+    return "Tree"
+  case nodeText:
+    return "Text"
+  case nodeLink:
+    return "Link"
+  case nodeTemplate:
+    return "Temp"
+  }
+  return "????"
+}
 
 /// LEXER
 
@@ -354,81 +379,6 @@ func lexText(l *lexer) stateFn {
   return nil      // Stop the run loop.
 }
 
-// const leftMeta = "{{"
-
-// func lexText(l *lexer) stateFn {
-//   for {
-//     if strings.HasPrefix(l.input[l.pos:], leftMeta) {
-//       if l.pos > l.start {
-//         l.emit(itemText)
-//       }
-//       return lexLeftMeta // Next state.
-//     }
-//     if l.next().typ == eof {
-//       break
-//     }
-//   }
-//   // Correctly reached EOF.
-//   if l.pos > l.start {
-//     l.emit(itemText)
-//   }
-//   l.emit(itemEOF) // Useful to make EOF a token.
-//   return nil      // Stop the run loop.
-// }
-
-// func lexLeftMeta(l *lexer) stateFn {
-//   l.pos += len(leftMeta)
-//   l.emit(itemLeftMeta)
-//   return lexInsideAction // Now inside {{ }}.
-// }
-
-// func lexInsideAction(l *lexer) stateFn {
-//   // Either number, quoted string, or identifier.
-//   // Spaces separate and are ignored.
-//   // Pipe symbols separate and are emitted.
-//   for {
-//     if strings.HasPrefix(l.input[l.pos:], rightMeta) {
-//       return lexRightMeta
-//     }
-//     switch r := l.next(); {
-//     case r == eof || r == '\n':
-//       return l.errorf("unclosed action")
-//     case isSpace(r):
-//       l.ignore()
-//     case r == '|':
-//       l.emit(itemPipe)
-//     case r == '"':
-//       return lexQuote
-//     case r == '`':
-//       return lexRawQuote
-//     case r == '+' || r == '-' || '0' <= r && r <= '9':
-//       l.backup()
-//       return lexNumber
-//     case isAlphaNumeric(r):
-//       l.backup()
-//       return lexIdentifier
-//     }
-//   }
-// }
-// func lexNumber(l *lexer) stateFn {
-//     // Optional leading sign.
-//     l.accept("+-")
-//     // Is it hex?
-//     digits := "0123456789"
-//     if l.accept("0") && l.accept("xX") {
-//         digits = "0123456789abcdefABCDEF"
-//     }
-//     l.acceptRun(digits)
-//     if l.accept(".") {
-//         l.acceptRun(digits)
-//     }
-//     if l.accept("eE") {
-//         l.accept("+-")
-//         l.acceptRun("0123456789")
-//     }
-
-////
-
 func Tokenize(body string) []item {
   ret := make([]item, 0)
   l := lex("", body)
@@ -484,7 +434,6 @@ func (p *parser) nextItemOfTypesOrSyntaxError(types ...itemType) item {
 
   for _, typ := range types {
     if it.typ == itemType(typ) {
-      p.pos += 1
       return it
     }
     exp = append(exp, itemType(typ).String())
@@ -505,7 +454,7 @@ func (p *parser) Parse() []Node {
       n := Node{typ: nodeText, val: it.val}
       ret = append(ret, n)
     case linkStart:
-      n := Node{typ: nodeLink, subtree: p.ParseLink()}
+      n := p.ParseLink()
       ret = append(ret, n)
     }
     p.pos += 1
@@ -524,22 +473,21 @@ func (p *parser) inspect(ahead int) {
   fmt.Println("End of Peek")
 }
 
-func (p *parser) ParseLink() []Node {
-  ret := make([]Node, 0)
+func (p *parser) ParseLink() Node {
+  ret := Node{typ: nodeLink}
   // eat the start of the link
   link := p.nextItemOfTypesOrSyntaxError(linkStart)
-
   link = p.nextItemOfTypesOrSyntaxError(linkEnd, itemText)
   // empty link
   if link.typ == linkEnd {
     return ret
   }
+  ret.params = make(map[string]string)
+  ret.params["link"] = link.val
   pipeOrRightLink := p.nextItemOfTypesOrSyntaxError(itemPipe, linkEnd)
   if pipeOrRightLink.typ == itemPipe {
     text := p.nextItemOfTypesOrSyntaxError(itemText)
-    ret = append(ret, Node{typ: nodeLink, val: text.val, subtree: nil})
-  } else if pipeOrRightLink.typ == linkEnd {
-    ret = append(ret, Node{typ: nodeLink, val: link.val, subtree: nil})
+    ret.params["text"] = text.val
   }
 
   return ret
