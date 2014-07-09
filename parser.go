@@ -81,52 +81,6 @@ func sortMapByValue(m map[string]int) PairList {
 
 //// Parser
 
-type Node struct {
-  typ     nodeType
-  val     string
-  params  map[string][]Node
-  subtree []Node
-}
-
-func (n *Node) String() string {
-  switch n.typ {
-  case nodeText:
-    return fmt.Sprintf("%s", n.val)
-  }
-  return fmt.Sprintf("%s[%s]", n.typ.String(), n.params)
-}
-
-func (n *Node) StringParam(k string) string {
-  return n.params[k][0].val
-}
-
-type nodeType int
-
-const (
-  nodeError = iota
-  nodeInvalid
-  nodeTree
-  nodeText
-  nodeLink
-  nodeTemplate
-)
-
-func (n nodeType) String() string {
-  switch n {
-  case nodeError:
-    return "Err"
-  case nodeTree:
-    return "Tree"
-  case nodeText:
-    return "Text"
-  case nodeLink:
-    return "Link"
-  case nodeTemplate:
-    return "Temp"
-  }
-  return "????"
-}
-
 /// LEXER
 
 type item struct {
@@ -423,7 +377,7 @@ func create_parser(items []item) *parser {
   return p
 }
 
-func Parse(items []item) []Node {
+func Parse(items []item) Nodes {
   p := create_parser(items)
   return p.Parse(envAlteration{})
 }
@@ -460,26 +414,20 @@ func (p *parser) backup() {
 }
 
 type envAlteration struct {
-  firstToken string
+  firstToken *string
   exitTypes  []itemType
 }
 
 func (e *envAlteration) empty() bool {
-  return e.firstToken == "" && len(e.exitTypes) == 0
+  return e.firstToken == nil && len(e.exitTypes) == 0
 }
 
-func (p *parser) Parse(st envAlteration) []Node {
+func (p *parser) Parse(st envAlteration) Nodes {
   overrideText := false
 
   /* envAlteration can replace the current text node by another and can also specify exit constraint of the parser */
-  if st.firstToken != "" {
+  if st.firstToken != nil {
     overrideText = true
-  }
-
-  if !st.empty() {
-    fmt.Println("Sub parsing", st)
-    p.inspect(3)
-
   }
 
   ret := make([]Node, 0)
@@ -487,33 +435,32 @@ func (p *parser) Parse(st envAlteration) []Node {
   for p.pos < len(p.items) {
     it := p.CurrentItem()
     if overrideText {
+      // fmt.Printf("Overriding first item from %s to %s\n", it.val, *st.firstToken)
       if it.typ == itemText {
-        it.val = st.firstToken
+        it.val = *st.firstToken
         overrideText = false
       } else {
-        panic(fmt.Sprintf("Have an override for the first token %q when item is not an itemText %+v ", st.firstToken, it))
+        panic(fmt.Sprintf("Have an override for the first token %q when item is not an itemText %+v ", *st.firstToken, it))
       }
     }
 
-    fmt.Printf("Current Item: %s", it.String())
     var n Node = Node{typ: nodeInvalid}
     switch it.typ {
     case itemText:
       n = Node{typ: nodeText, val: it.val}
     case linkStart:
       n = p.ParseLink()
-      p.inspect(3)
     case templateStart:
       n = p.ParseTemplate()
-
+    case itemEOF:
+      break
     }
     if n.typ != nodeInvalid {
-      fmt.Println("Adding node :", n.String())
       ret = append(ret, n)
     }
+    it = p.CurrentItem()
     for _, typ := range st.exitTypes {
       if it.typ == itemType(typ) {
-        fmt.Printf("Finished sub parsing, met %s, returning %+v\n", it.typ.String(), ret)
         return ret
       }
     }
@@ -542,7 +489,7 @@ func (p *parser) ParseLink() Node {
   if link.typ == linkEnd {
     return ret
   }
-  ret.params = make(map[string][]Node)
+  ret.params = make(map[string]Nodes)
   ret.params["link"] = []Node{Node{typ: nodeText, val: link.val}}
   pipeOrRightLink := p.nextItemOfTypesOrSyntaxError(itemPipe, linkEnd)
   if pipeOrRightLink.typ == itemPipe {
@@ -560,7 +507,7 @@ func (p *parser) ParseTemplate() Node {
     panic("Should not happen")
   }
 
-  ret.params = make(map[string][]Node)
+  ret.params = make(map[string]Nodes)
   ret.params["name"] = p.Subparse(envAlteration{exitTypes: []itemType{itemPipe, templateEnd}})
 
   cont := true
@@ -577,7 +524,7 @@ func (p *parser) ParseTemplate() Node {
       if ix != -1 {
         k := elt.val[:ix]
         v := elt.val[ix+1:]
-        ret.params[k] = p.Subparse(envAlteration{firstToken: v, exitTypes: []itemType{itemPipe, templateEnd}})
+        ret.params[k] = p.Subparse(envAlteration{firstToken: &v, exitTypes: []itemType{itemPipe, templateEnd}})
       } else {
         ret.val = elt.val
         p.next()

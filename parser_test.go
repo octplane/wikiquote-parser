@@ -149,7 +149,7 @@ func TestTemplate2(t *testing.T) {
 func TestTemplate3(t *testing.T) {
   temp := "citation"
   txt := "Si six scies scient six cyprès..."
-  aut := "Les Inconnus"
+  aut := "Ane onyme"
 
   tree := Parse(Tokenize(fmt.Sprintf("{{%s|citation=%s|author=%s}}", temp, txt, aut)))
   if len(tree) != 1 {
@@ -173,11 +173,10 @@ func TestTemplate3(t *testing.T) {
 func TestTemplate4(t *testing.T) {
   temp := "citation"
   txt := "Tant va la cruche à l'eau qu'à la fin tu me les brises."
-  aut := "[[Les Inconnus]]"
+  aut := "Les Inconnus"
 
-  source := fmt.Sprintf("{{%s|citation=%s|author=%s}}", temp, txt, aut)
+  source := fmt.Sprintf("{{%s|citation=%s|author=[[%s]]}}", temp, txt, aut)
   toks := Tokenize(source)
-  toks.inspect()
 
   tree := Parse(toks)
   if len(tree) != 1 {
@@ -193,7 +192,8 @@ func TestTemplate4(t *testing.T) {
   if tree[0].StringParam("citation") != txt {
     t.Errorf("Unexpected citation params: wanted %q, got %q", txt, tree[0].StringParam("citation"))
   }
-  if tree[0].StringParam("author") != aut {
-    t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].StringParam("author"))
+
+  if tree[0].params["author"][1].params["link"][0].val != aut {
+    t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].params["author"][1].params["link"][0].val)
   }
 }
