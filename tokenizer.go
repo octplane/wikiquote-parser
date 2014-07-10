@@ -141,7 +141,6 @@ func (l *lexer) nextItem() item {
       return item
     }
   }
-  panic("not reached")
 }
 
 func lexText(l *lexer) stateFn {

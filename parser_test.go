@@ -184,7 +184,7 @@ func TestComplexTemplate(t *testing.T) {
   tree := Parse(Tokenize(txt))
 
   if tree[0].params[0][0].val != match {
-    t.Error("Invalid parameter, got %q, expected %q", match, tree[0].params[0][0].val)
+    t.Errorf("Invalid parameter, got %q, expected %q", match, tree[0].params[0][0].val)
   }
 }
 
@@ -194,7 +194,7 @@ func TestComplexLink(t *testing.T) {
 
   tree := Parse(Tokenize(txt))
   if tree[0].params[1][0].val != linkText {
-    t.Error("Invalid parameter, got %q, expected %q", linkText, tree[0].params[1][0].val)
+    t.Errorf("Invalid parameter, got %q, expected %q", linkText, tree[0].params[1][0].val)
   }
 
 }
