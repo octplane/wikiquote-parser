@@ -328,8 +328,11 @@ func lexText(l *lexer) stateFn {
     }
     return lexText
   }
-  l.emit(itemEOF) // Useful to make EOF a token.
-  return nil      // Stop the run loop.
+  if l.pos > l.start {
+    l.emit(itemText)
+  }
+  l.emit(itemEOF)
+  return nil // Stop the run loop.
 }
 
 func Tokenize(body string) tokens {
@@ -353,12 +356,12 @@ func Tokenize(body string) tokens {
 
 type tokens []item
 
-func (its tokens) inspect() {
-  fmt.Println("Tokens:")
+func (its tokens) String() string {
+  out := ""
   for _, it := range its {
-    fmt.Println(it.String())
+    out += it.String() + "\n"
   }
-  fmt.Println("...")
+  return out
 }
 
 type parser struct {
@@ -393,19 +396,6 @@ func (p *parser) nextItem() item {
 
 func (p *parser) next() {
   p.pos += 1
-}
-
-func (p *parser) nextItemOfTypesOrSyntaxError(types ...itemType) item {
-  it := p.nextItem()
-  exp := make([]string, 0)
-
-  for _, typ := range types {
-    if it.typ == itemType(typ) {
-      return it
-    }
-    exp = append(exp, itemType(typ).String())
-  }
-  panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.val, exp, it.typ.String()))
 }
 
 func (p *parser) eat(types ...itemType) {

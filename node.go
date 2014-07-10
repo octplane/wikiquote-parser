@@ -34,26 +34,22 @@ func (n *Node) StringParam(k string) string {
 type nodeType int
 
 const (
-  nodeError = iota
-  nodeInvalid
-  nodeTree
+  nodeInvalid = iota
   nodeText
+  nodeTitle
   nodeLink
   nodeTemplate
 )
 
 func (n nodeType) String() string {
   switch n {
-  case nodeError:
-    return "Err"
-  case nodeTree:
-    return "Tree"
   case nodeText:
     return "Text"
   case nodeLink:
     return "Link"
   case nodeTemplate:
     return "Template"
+  default:
+    return "????"
   }
-  return "????"
 }

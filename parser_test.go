@@ -5,6 +5,15 @@ import (
   "testing"
 )
 
+func TestTokenizer1(t *testing.T) {
+  text := "Bar baz baz"
+  toks := Tokenize(fmt.Sprintf("====%s====\n", text))
+  if len(toks) != 2 {
+    t.Errorf("Unexpected number of tokens, expected %d, got %d\n%s", 2, len(toks), toks.String())
+
+  }
+}
+
 func TestLinkParser(t *testing.T) {
   lnk := "foo"
   text := "Link to foo "
@@ -16,10 +25,10 @@ func TestLinkParser(t *testing.T) {
     t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].typ.String())
   }
   if tree[0].StringParam("link") != lnk {
-    t.Error("Unexpected link, expected link to %q, got %q", lnk, tree[0].StringParam("link"))
+    t.Errorf("Unexpected link, expected link to %q, got %q", lnk, tree[0].StringParam("link"))
   }
   if tree[0].params[0][0].val != text {
-    t.Error("Unexpected link, expected text link to %q, got %q", text, tree[0].params[0][0].val)
+    t.Errorf("Unexpected link, expected text link to %q, got %q", text, tree[0].params[0][0].val)
   }
 }
 
