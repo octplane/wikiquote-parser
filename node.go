@@ -39,6 +39,7 @@ const (
   nodeTitle
   nodeLink
   nodeTemplate
+  nodeEq
 )
 
 func (n nodeType) String() string {
@@ -49,6 +50,10 @@ func (n nodeType) String() string {
     return "Link"
   case nodeTemplate:
     return "Template"
+  case nodeEq:
+    return " EQ "
+  case nodeTitle:
+    return " Title "
   default:
     return "????"
   }
