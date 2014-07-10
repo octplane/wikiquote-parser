@@ -2,7 +2,6 @@ package wikiquote_parser
 
 import (
   "fmt"
-  "regexp"
   "sort"
   "strings"
   "unicode/utf8"
@@ -409,6 +408,20 @@ func (p *parser) nextItemOfTypesOrSyntaxError(types ...itemType) item {
   panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.val, exp, it.typ.String()))
 }
 
+func (p *parser) eat(types ...itemType) {
+  it := p.nextItem()
+  exp := make([]string, 0)
+
+  for _, typ := range types {
+    if it.typ == itemType(typ) {
+      return
+    }
+    exp = append(exp, itemType(typ).String())
+  }
+  panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.val, exp, it.typ.String()))
+
+}
+
 func (p *parser) backup() {
   p.pos -= 1
 }
@@ -481,42 +494,32 @@ func (p *parser) inspect(ahead int) {
 }
 
 func (p *parser) ParseLink() Node {
-  ret := Node{typ: nodeLink}
-  // eat the start of the link
-  link := p.nextItemOfTypesOrSyntaxError(linkStart)
-  link = p.nextItemOfTypesOrSyntaxError(linkEnd, itemText)
-  // empty link
-  if link.typ == linkEnd {
-    return ret
-  }
-  ret.params = make(map[string]Nodes)
-  ret.params["link"] = []Node{Node{typ: nodeText, val: link.val}}
-  pipeOrRightLink := p.nextItemOfTypesOrSyntaxError(itemPipe, linkEnd)
-  if pipeOrRightLink.typ == itemPipe {
-    ret.params["text"] = p.Subparse(envAlteration{exitTypes: []itemType{itemPipe, linkEnd}})
-  }
+  ret := Node{typ: nodeLink, namedParams: make(map[string]Nodes), params: make([]Nodes, 0)}
+
+  p.eat(linkStart)
+  ret.namedParams["link"] = p.subparse(envAlteration{exitTypes: []itemType{itemPipe, linkEnd}})
+  p.scanSubArgumentsUntil(&ret, linkEnd)
 
   return ret
 }
 
 func (p *parser) ParseTemplate() Node {
-  ret := Node{typ: nodeTemplate}
+  ret := Node{typ: nodeTemplate, namedParams: make(map[string]Nodes), params: make([]Nodes, 0)}
 
-  elt := p.nextItemOfTypesOrSyntaxError(templateStart)
-  if elt.typ != templateStart {
-    panic("Should not happen")
-  }
+  p.eat(templateStart)
+  ret.namedParams["name"] = p.subparse(envAlteration{exitTypes: []itemType{itemPipe, templateEnd}})
+  p.scanSubArgumentsUntil(&ret, templateEnd)
 
-  ret.params = make(map[string]Nodes)
-  ret.params["name"] = p.Subparse(envAlteration{exitTypes: []itemType{itemPipe, templateEnd}})
+  return ret
+}
 
+func (p *parser) scanSubArgumentsUntil(node *Node, stop itemType) {
   cont := true
-
   for cont {
     elt := p.CurrentItem()
     switch elt.typ {
-    case templateEnd:
-      return ret
+    case stop:
+      return
     case itemPipe:
       p.next()
     case itemText:
@@ -524,88 +527,19 @@ func (p *parser) ParseTemplate() Node {
       if ix != -1 {
         k := elt.val[:ix]
         v := elt.val[ix+1:]
-        ret.params[k] = p.Subparse(envAlteration{firstToken: &v, exitTypes: []itemType{itemPipe, templateEnd}})
+        node.namedParams[k] = p.subparse(envAlteration{firstToken: &v, exitTypes: []itemType{itemPipe, stop}})
       } else {
-        ret.val = elt.val
-        p.next()
+        node.params = append(node.params, p.subparse(envAlteration{exitTypes: []itemType{itemPipe, stop}}))
       }
+    default:
+      node.params = append(node.params, p.subparse(envAlteration{exitTypes: []itemType{itemPipe, stop}}))
     }
   }
 
-  return ret
 }
 
-func (p *parser) Subparse(st envAlteration) []Node {
+func (p *parser) subparse(st envAlteration) []Node {
   return p.Parse(st)
-}
-
-func markupExtractor(title string, body string) []Command {
-
-  l := lex(title, body)
-  go l.run()
-
-  var it item
-  halt := false
-  for !halt {
-    it = l.nextItem()
-    fmt.Printf(it.String())
-    switch it.typ {
-    case itemEOF:
-      halt = true
-      fmt.Println("EOF !!")
-      break
-    }
-  }
-  panic("Hammer time!")
-
-  markup := regexp.MustCompile("(?s){{[^}]+}}")
-  param := regexp.MustCompile("([^=]+)=(.*)")
-
-  strCommands := markup.FindAllString(body, -1)
-
-  commands := make([]Command, len(strCommands))
-  pos := 0
-
-  for _, cmd := range strCommands {
-    cmd = cmd[2 : len(cmd)-2]
-
-    arguments := make([]string, 10000)
-    argumentsIndex := 0
-    kvArguments := make(map[string]string, 1000)
-
-    for _, arg := range strings.Split(cmd, "|") {
-      kv := param.FindStringSubmatch(arg)
-      if len(kv) == 3 {
-        key := strings.TrimSpace(strings.ToLower(kv[1]))
-        val, exists := kvArguments[key]
-        if exists && val != kv[0] {
-          // FIXME: handle the issue
-          // panic(fmt.Sprintf("Parameter %s already exists with value \"%s\", here wants : \"%s\"", key, val, kv[0]))
-        } else {
-          kvArguments[key] = kv[2]
-        }
-      } else {
-        arguments[argumentsIndex] = arg
-        argumentsIndex += 1
-      }
-    }
-
-    cmd := strings.TrimSpace(strings.ToLower(arguments[0]))
-
-    // Parse special "defaultsort:", "if:", "msg:" commands
-    if strings.Index(cmd, ":") != -1 {
-      cmd = cmd[0:strings.Index(cmd, ":")]
-      // FIXME inject arguments in Command anyway
-    }
-
-    // Ignore the empty command
-    if cmd != "" {
-      commands[pos] = Command{Cmd: cmd, PageTitle: title, Arguments: arguments[1:], NamedArguments: kvArguments}
-      fmt.Printf("%+v\n", commands[pos])
-      pos += 1
-    }
-  }
-  return commands
 }
 
 func cleanup(in string) string {
