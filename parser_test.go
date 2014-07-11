@@ -1,4 +1,4 @@
-package wikiquote_parser
+package wikimediaparser
 
 import (
   "fmt"

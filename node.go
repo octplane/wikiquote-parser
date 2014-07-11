@@ -1,9 +1,14 @@
-package wikiquote_parser
+package wikimediaparser
 
 import (
   "fmt"
 )
 
+// Node as it is emitted by the parser
+//    - contains a NodeType for clear identification
+//    - a string val Val
+//    - a list of named parameters which are actually Node Lists
+//    -a list of anonymous parameters, a Node list again
 type Node struct {
   typ         nodeType
   val         string
@@ -27,6 +32,7 @@ func (n *Node) String() string {
   return o
 }
 
+// StringParam  returns the string value of a given named parameter
 func (n *Node) StringParam(k string) string {
   return n.namedParams[k][0].val
 }

@@ -1,5 +1,6 @@
-package wikiquote_parser
+package wikimediaparser
 
+// Nodes : a simple list of Nodes
 type Nodes []Node
 
 func (ns Nodes) String() string {
