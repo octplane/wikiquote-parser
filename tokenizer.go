@@ -34,7 +34,7 @@ type lexer struct {
 }
 
 // emit passes an item back to the client.
-func (l *lexer) emit(t itemType) {
+func (l *lexer) emit(t token) {
   var it item
 
   if l.start > len(l.input) {
@@ -164,7 +164,7 @@ func lexText(l *lexer) stateFn {
   if l.pos > l.start {
     l.emit(itemText)
   }
-  l.emit(itemEOF)
+  l.emit(tokenEOF)
   return nil // Stop the run loop.
 }
 
@@ -179,7 +179,7 @@ func Tokenize(body string) tokens {
     it = l.nextItem()
     ret = append(ret, it)
     switch it.typ {
-    case itemEOF:
+    case tokenEOF:
       halt = true
       break
     }

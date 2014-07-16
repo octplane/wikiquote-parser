@@ -185,8 +185,9 @@ func main() {
   textXPath := xmlpath.MustCompile(("revision/text"))
   titleXPath := xmlpath.MustCompile("title")
 
-  // fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  fi, err := os.Open("sample1.xml")
+  //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
+  fi, err := os.Open("sample2.xml")
+  // fi, err := os.Open("sample1.xml")
 
   if err != nil {
 
@@ -205,13 +206,13 @@ func main() {
   if err != nil {
     log.Fatal(err)
   }
-  // ns := make(wikiquote_parser.Nodes, 0)
   iter := pageXPath.Iter(root)
   for iter.Next() {
     page := iter.Node()
     content, _ := textXPath.String(page)
     title, _ := titleXPath.String(page)
     fmt.Println(title)
-    fmt.Println(wikiquote_parser.Parse(wikiquote_parser.Tokenize(content)))
+    tokens := wikimediaparser.Tokenize(content)
+    fmt.Println(wikimediaparser.Parse(tokens))
   }
 }

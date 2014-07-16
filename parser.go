@@ -2,19 +2,25 @@ package wikimediaparser
 
 import (
   "fmt"
+  "log"
+  "os"
 )
 
 type parser struct {
-  items []item
-  start int
-  pos   int
+  items           []item
+  start           int
+  pos             int
+  logger          *log.Logger
+  ignoreNextBlock bool
 }
 
 func create_parser(items []item) *parser {
   p := &parser{
-    items: items,
-    start: 0,
-    pos:   0,
+    items:           items,
+    start:           0,
+    pos:             0,
+    logger:          log.New(os.Stdout, "[Parse]\t", log.LstdFlags),
+    ignoreNextBlock: false,
   }
   return p
 }
@@ -25,6 +31,7 @@ func Parse(items []item) Nodes {
 }
 
 func (p *parser) CurrentItem() item {
+  //   defer p.handleAbort()
   return p.items[p.pos]
 }
 
@@ -38,15 +45,15 @@ func (p *parser) next() {
   p.pos += 1
 }
 
-func (p *parser) eat(types ...itemType) {
+func (p *parser) eat(types ...token) {
   it := p.nextItem()
   exp := make([]string, 0)
 
   for _, typ := range types {
-    if it.typ == itemType(typ) {
+    if it.typ == token(typ) {
       return
     }
-    exp = append(exp, itemType(typ).String())
+    exp = append(exp, token(typ).String())
   }
   panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.val, exp, it.typ.String()))
 
@@ -65,15 +72,36 @@ func (p *parser) ahead(count int) {
 }
 
 type envAlteration struct {
-  exitTypes    []itemType
-  exitSequence []itemType
+  exitTypes    []token
+  exitSequence []token
+}
+
+func (ev *envAlteration) String() string {
+  st := ""
+  if len(ev.exitTypes) > 0 {
+    st += "Exit types: "
+  }
+  for _, et := range ev.exitTypes {
+    st += et.String() + " "
+  }
+
+  if len(ev.exitTypes) > 0 {
+    st += "\n"
+  }
+
+  if len(ev.exitSequence) > 0 {
+    st += "Exit Sequence: "
+  }
+  for _, es := range ev.exitSequence {
+    st += es.String()
+  }
+  return st
 }
 
 func (p *parser) Parse(st envAlteration) Nodes {
-
   ret := make([]Node, 0)
 
-  for p.pos < len(p.items) {
+  for p.pos < len(p.items)-1 {
     it := p.CurrentItem()
 
     // If the exit Sequence match, abort immediately
@@ -103,7 +131,7 @@ func (p *parser) Parse(st envAlteration) Nodes {
       n = p.ParseLink()
     case templateStart:
       n = p.ParseTemplate()
-    case itemEOF:
+    case tokenEOF:
       break
     case tokenEq:
       p.nextItem()
@@ -117,9 +145,10 @@ func (p *parser) Parse(st envAlteration) Nodes {
     if n.typ != nodeInvalid {
       ret = append(ret, n)
     }
+
     it = p.CurrentItem()
     for _, typ := range st.exitTypes {
-      if it.typ == itemType(typ) {
+      if it.typ == token(typ) {
         return ret
       }
     }
@@ -128,22 +157,11 @@ func (p *parser) Parse(st envAlteration) Nodes {
   return ret
 }
 
-func (p *parser) inspect(ahead int) {
-  fmt.Printf("------ Peeking ahead for %d elements\n", ahead)
-  for pos, content := range p.items[p.pos:] {
-    if pos > ahead {
-      break
-    }
-    fmt.Printf(content.String())
-  }
-  fmt.Println("------ End of Peek")
-}
-
 func (p *parser) ParseLink() Node {
   ret := Node{typ: nodeLink, namedParams: make(map[string]Nodes), params: make([]Nodes, 0)}
 
   p.eat(linkStart)
-  ret.namedParams["link"] = p.subparse(envAlteration{exitTypes: []itemType{itemPipe, linkEnd}})
+  ret.namedParams["link"] = p.subparse(envAlteration{exitTypes: []token{itemPipe, linkEnd}})
   p.scanSubArgumentsUntil(&ret, linkEnd)
 
   return ret
@@ -153,7 +171,7 @@ func (p *parser) ParseTemplate() Node {
   ret := Node{typ: nodeTemplate, namedParams: make(map[string]Nodes), params: make([]Nodes, 0)}
 
   p.eat(templateStart)
-  ret.namedParams["name"] = p.subparse(envAlteration{exitTypes: []itemType{itemPipe, templateEnd}})
+  ret.namedParams["name"] = p.subparse(envAlteration{exitTypes: []token{itemPipe, templateEnd}})
   p.scanSubArgumentsUntil(&ret, templateEnd)
 
   return ret
@@ -161,15 +179,17 @@ func (p *parser) ParseTemplate() Node {
 
 func (p *parser) parseTitle() Node {
   var ret Node
-  exitSequence := make([]itemType, 0)
+  exitSequence := make([]token, 0)
 
   item := p.CurrentItem()
   level := 0
+
   for item.typ == tokenEq {
     exitSequence = append(exitSequence, tokenEq)
     item = p.nextItem()
     level += 1
   }
+  defer p.handleTitleError(p.pos, level)
 
   if level < 2 {
     ret = Node{typ: nodeEq}
@@ -186,7 +206,7 @@ func (p *parser) parseTitle() Node {
   return ret
 }
 
-func (p *parser) scanSubArgumentsUntil(node *Node, stop itemType) {
+func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
   cont := true
   for cont {
     elt := p.CurrentItem()
@@ -200,18 +220,20 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop itemType) {
       if p.CurrentItem().typ == tokenEq {
         k := elt.val
         p.next()
-        node.namedParams[k] = p.subparse(envAlteration{exitTypes: []itemType{itemPipe, stop}})
+        node.namedParams[k] = p.subparse(envAlteration{exitTypes: []token{itemPipe, stop}})
       } else {
         p.backup()
-        node.params = append(node.params, p.subparse(envAlteration{exitTypes: []itemType{itemPipe, stop}}))
+        node.params = append(node.params, p.subparse(envAlteration{exitTypes: []token{itemPipe, stop}}))
       }
     default:
-      node.params = append(node.params, p.subparse(envAlteration{exitTypes: []itemType{itemPipe, stop}}))
+      node.params = append(node.params, p.subparse(envAlteration{exitTypes: []token{itemPipe, stop}}))
     }
   }
 
 }
 
-func (p *parser) subparse(st envAlteration) []Node {
-  return p.Parse(st)
+func (p *parser) subparse(st envAlteration) Nodes {
+  var res Nodes
+  res = p.Parse(st)
+  return res
 }

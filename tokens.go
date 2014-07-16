@@ -5,11 +5,11 @@ import (
 )
 
 type item struct {
-  typ itemType
+  typ token
   val string
 }
 
-type itemType int
+type token int
 
 const (
   itemError = iota
@@ -23,7 +23,7 @@ const (
   itemPipe
   tokenEq
   controlStruct
-  itemEOF
+  tokenEOF
 )
 
 // https://en.wikipedia.org/wiki/Help:Cheatsheet
@@ -35,10 +35,10 @@ const pipe = "|"
 const eq = "="
 const lf = "\n"
 
-var strToToken map[string]itemType
+var strToToken map[string]token
 
 func init() {
-  strToToken = map[string]itemType{
+  strToToken = map[string]token{
     leftTemplate:  templateStart,
     rightTemplate: templateEnd,
     leftLink:      linkStart,
@@ -51,7 +51,7 @@ func init() {
 func (i item) String() string {
   desc := i.typ.String()
   switch i.typ {
-  case itemEOF:
+  case tokenEOF:
     return "EOF"
   case itemError:
     return i.val
@@ -64,24 +64,24 @@ func (i item) String() string {
   case linkEnd:
     return fmt.Sprintf("%s", desc)
   case itemText:
-    if len(i.val) > 10 {
-      return fmt.Sprintf("%s: \"%.10s...\"", desc, i.val)
+    if len(i.val) > 40 {
+      return fmt.Sprintf("%s[...]%s", i.val[:17], i.val[len(i.val)-17:])
     }
-    return fmt.Sprintf("%s: %q", desc, i.val)
+    return i.val
   case itemPipe:
     return fmt.Sprintf("%s", desc)
   case controlStruct:
     return fmt.Sprintf("%s %s", desc, i.val)
   case tokenEq:
-    return " EQ "
+    return "="
   default:
     return fmt.Sprintf("%s %s", desc, i.val)
   }
 }
 
-func (itt itemType) String() string {
+func (itt token) String() string {
   switch itt {
-  case itemEOF:
+  case tokenEOF:
     return "EOF"
   case itemError:
     return "Error"
@@ -92,15 +92,15 @@ func (itt itemType) String() string {
   case linkStart:
     return "Link start"
   case linkEnd:
-    return "Link end"
+    return rightLink
   case itemText:
     return "Text"
   case itemPipe:
-    return "Pipe"
+    return "|"
   case controlStruct:
     return "Control struct"
   case tokenEq:
-    return " = "
+    return "="
   default:
     return "??"
   }

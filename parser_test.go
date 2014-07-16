@@ -59,9 +59,9 @@ func TestTokenize(t *testing.T) {
   ts := Tokenize(s)
 
   assertEqual(t, "number of tokens", 3, len(ts))
-  assertEqual(t, "Token", itemType(itemPipe).String(), ts[0].typ.String())
-  assertEqual(t, "Token", itemType(templateStart).String(), ts[1].typ.String())
-  assertEqual(t, "Token", itemType(itemEOF).String(), ts[2].typ.String())
+  assertEqual(t, "Token", token(itemPipe).String(), ts[0].typ.String())
+  assertEqual(t, "Token", token(templateStart).String(), ts[1].typ.String())
+  assertEqual(t, "Token", token(tokenEOF).String(), ts[2].typ.String())
 }
 
 func TestTokenize2(t *testing.T) {
