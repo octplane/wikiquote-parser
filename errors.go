@@ -81,8 +81,8 @@ func (p *parser) handleTitleError(pos int, lvl int) {
   }
 }
 
-func outOfBoundsPanic(p *parser) {
-  msg := "Went too far, out of bounds"
+func outOfBoundsPanic(p *parser, s int) {
+  msg := fmt.Sprintf("Went too far, out of bounds (from %d)", s)
   myerr := inspectable{}
   p.defaultInspectable(&myerr)
   myerr.message = msg

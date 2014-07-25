@@ -34,7 +34,7 @@ func Parse(items []item) Nodes {
 
 func (p *parser) CurrentItem() item {
   if p.pos > len(p.items) {
-    outOfBoundsPanic(p)
+    outOfBoundsPanic(p, p.start)
   }
 
   return p.items[p.pos]
