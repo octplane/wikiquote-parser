@@ -33,11 +33,15 @@ func Parse(items []item) Nodes {
 }
 
 func (p *parser) CurrentItem() item {
+  if p.pos > len(p.items) {
+    outOfBoundsPanic(p)
+  }
+
   return p.items[p.pos]
 }
 
 func (p *parser) nextItem() item {
-  ret := p.items[p.pos]
+  ret := p.CurrentItem()
   p.pos += 1
   return ret
 }

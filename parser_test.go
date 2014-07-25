@@ -200,7 +200,7 @@ func TestComplexLink(t *testing.T) {
 }
 
 func TestSyntaxError(t *testing.T) {
-  doc := "==== Malformed title===\n\nnext block"
+  doc := "==== Malformed title===\n\nAnother Block"
 
   Parse(Tokenize(doc))
   // if tree[0].params[1][0].val != doc {

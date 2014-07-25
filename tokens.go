@@ -52,7 +52,7 @@ func (i item) String() string {
   desc := i.typ.String()
   switch i.typ {
   case tokenEOF:
-    return "EOF"
+    return "E"
   case itemError:
     return i.val
   case templateStart:
@@ -82,7 +82,7 @@ func (i item) String() string {
 func (itt token) String() string {
   switch itt {
   case tokenEOF:
-    return "EOF"
+    return "E"
   case itemError:
     return "Error"
   case templateStart:

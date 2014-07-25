@@ -1,6 +1,7 @@
 package wikimediaparser
 
 import (
+  "fmt"
   "math"
 )
 
@@ -12,54 +13,81 @@ const (
 )
 
 type inspectable struct {
-  dumped   bool
   parser   *parser
+  pos      int
+  message  string
   delta    int // how many token to dump
   start    int
   err      interface{}
   behavior behaviorOnError
 }
 
-func createInspectable(p *parser, e interface{}) inspectable {
-  is := inspectable{dumped: false, parser: p, delta: 8, start: p.pos, err: e, behavior: abortBehavior}
+func (p *parser) defaultInspectable(i *inspectable) {
+  i.parser = p
+  i.pos = p.pos
+  i.delta = 8
+  i.behavior = abortBehavior
+}
+
+func createInspectable(p *parser, pos int, m string, e interface{}) inspectable {
+  is := inspectable{parser: p, pos: pos - 1, message: m, delta: 8, start: p.pos, err: e, behavior: abortBehavior}
   return is
 }
 
 func (me inspectable) handle() {
   switch me.err.(type) {
   case inspectable:
-    me.dumped = me.err.(inspectable).dumped
+    me.err.(inspectable).handleError()
   }
   me.handleError()
 }
 
-func (me *inspectable) handleError() {
-  me.parser.logger.Printf("Syntax error at position %d\n", me.start)
-  if me.err.(type) != inspectable {
-    me.parser.logger.Printf("Original error was: %+v", me.err)
+func (me inspectable) handleError() {
+  me.parser.logger.Println(me.message)
+  _, ok := me.err.(inspectable)
+  if !ok {
+    if me.err != nil {
+      me.parser.logger.Printf("Original error was: %+v", me.err)
+    }
+    me.dumpStream()
   }
-  me.dumpStream()
 }
 
 func (me *inspectable) dumpStream() {
-  if !me.dumped {
-    me.dumped = true
-    me.parser.logger.Println("Inspecting stack during known Exception")
-    me.parser.inspectHilight(me.delta*2, me.delta)
-  }
+  me.parser.logger.Println("Inspecting stack during known Exception")
+  // rewind in stream
+  // TOKENSTOKENS
+  //   ˆ
+  //   Error position
+  // Start from:
+  // max ( error position - delta, 0)
+  // highlight at:
+  // min ( me.delta, error position)
+  me.parser.pos = int(math.Max(float64(me.pos-me.delta), 0))
+  me.parser.inspectHilight(me.delta*2, int(math.Min(float64(me.delta), float64(me.pos))))
 }
 
 func (p *parser) handleTitleError(pos int, lvl int) {
   if err := recover(); err != nil {
-    myerr := createInspectable(p, err)
-    panic(myerr)
 
-    // level := "?"
-    // if lvl > 0 {
-    //   level = fmt.Sprintf("%d", lvl)
-    // }
-    // p.syntaxEError(err, pos, "Invalid title-%s format", level)
+    level := "?"
+    if lvl > 0 {
+      level = fmt.Sprintf("%d", lvl)
+    }
+    msg := fmt.Sprintf("Invalid title-%s format at position %d", level, pos)
+
+    myerr := createInspectable(p, pos, msg, err)
+    panic(myerr)
   }
+}
+
+func outOfBoundsPanic(p *parser) {
+  msg := "Went too far, out of bounds"
+  myerr := inspectable{}
+  p.defaultInspectable(&myerr)
+  myerr.message = msg
+  myerr.behavior = ignoreSectionBehavior
+  panic(myerr)
 }
 
 func (p *parser) syntaxEError(err interface{}, pos int, format string, params ...interface{}) {
@@ -72,12 +100,9 @@ func (p *parser) syntaxEError(err interface{}, pos int, format string, params ..
 }
 
 func (p *parser) inspectHilight(ahead int, hi int) {
-  p.logger.Printf("Next %d elements in stream.\n", ahead)
-  pfx := ""
-  if hi > 0 {
-    pfx = "    "
-  }
-  prefix := pfx
+  p.logger.Printf("Error Context:\n")
+  prefix := " "
+  line := "\""
 
   if p.pos > len(p.items) {
     p.logger.Printf("Cannot inspect from here: at end of stream (pos=%d)", p.pos)
@@ -87,13 +112,16 @@ func (p *parser) inspectHilight(ahead int, hi int) {
         break
       }
       if pos == hi {
-        prefix = ">>> "
+        prefix += "ˆ"
       } else {
-        prefix = pfx
+        prefix += " " // * len(content.String())
       }
-      p.logger.Printf(prefix + content.String())
+      line = line + content.String()
     }
   }
+  p.logger.Println(line + "\"")
+  p.logger.Println(prefix)
+
 }
 
 func (p *parser) inspect(ahead int) {
@@ -106,8 +134,23 @@ func (p *parser) handleParseError() {
     switch err.(type) {
     case inspectable:
       err.(inspectable).handle()
+      insp := err.(inspectable)
+      ok := true
+      var behavior behaviorOnError
+      for ok {
+        behavior = insp.behavior
+        insp, ok = insp.err.(inspectable)
+      }
+      switch behavior {
+      case abortBehavior:
+        panic("Abort")
+      case ignoreSectionBehavior:
+        panic("Ignore")
+      }
     default:
       p.syntaxEError(err, p.pos, "Error not handled by the parser :-/")
     }
+    // Go down in the error hierarchy
+
   }
 }
