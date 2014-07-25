@@ -35,6 +35,9 @@ func (me inspectable) handle() {
 
 func (me *inspectable) handleError() {
   me.parser.logger.Printf("Syntax error at position %d\n", me.start)
+  if me.err.(type) != inspectable {
+    me.parser.logger.Printf("Original error was: %+v", me.err)
+  }
   me.dumpStream()
 }
 
