@@ -198,3 +198,13 @@ func TestComplexLink(t *testing.T) {
   }
 
 }
+
+func TestSyntaxError(t *testing.T) {
+  doc := "==== Malformed title===\n\nnext block"
+
+  Parse(Tokenize(doc))
+  // if tree[0].params[1][0].val != doc {
+  //   t.Errorf("Invalid parameter, got %q, expected %q", doc, tree[0].params[1][0].val)
+  // }
+
+}

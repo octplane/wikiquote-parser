@@ -27,11 +27,12 @@ func create_parser(items []item) *parser {
 
 func Parse(items []item) Nodes {
   p := create_parser(items)
+  defer p.handleParseError()
+
   return p.Parse(envAlteration{})
 }
 
 func (p *parser) CurrentItem() item {
-  //   defer p.handleAbort()
   return p.items[p.pos]
 }
 
@@ -79,7 +80,7 @@ type envAlteration struct {
 func (ev *envAlteration) String() string {
   st := ""
   if len(ev.exitTypes) > 0 {
-    st += "Exit types: "
+    st += "Closing types: "
   }
   for _, et := range ev.exitTypes {
     st += et.String() + " "
@@ -90,7 +91,7 @@ func (ev *envAlteration) String() string {
   }
 
   if len(ev.exitSequence) > 0 {
-    st += "Exit Sequence: "
+    st += "Closing Sequence: "
   }
   for _, es := range ev.exitSequence {
     st += es.String()
