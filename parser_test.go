@@ -239,3 +239,12 @@ func TestSyntaxError(t *testing.T) {
   assertEqual(t, "Node count", 5, len(p))
 
 }
+
+func TestSyntaxError2(t *testing.T) {
+  doc := "Some line\n==== Malformed title===\n\nAnother Block\n\n=Plop===\n\nPlip"
+
+  p := Parse(Tokenize(doc))
+  fmt.Println(p)
+  assertEqual(t, "Node count", 5, len(p))
+
+}
