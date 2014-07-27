@@ -40,10 +40,20 @@ func (p *parser) CurrentItem() item {
   return p.items[p.pos]
 }
 
-func (p *parser) nextItem() item {
+func (p *parser) eatCurrentItem() item {
   ret := p.CurrentItem()
   p.pos += 1
   return ret
+}
+
+func (p *parser) nextBlock() {
+  for p.pos < len(p.items) {
+    if p.eatCurrentItem().typ == tokenLF {
+      if p.eatCurrentItem().typ == tokenLF {
+        return
+      }
+    }
+  }
 }
 
 func (p *parser) next() {
@@ -51,7 +61,7 @@ func (p *parser) next() {
 }
 
 func (p *parser) eat(types ...token) {
-  it := p.nextItem()
+  it := p.eatCurrentItem()
   exp := make([]string, 0)
 
   for _, typ := range types {
@@ -139,7 +149,7 @@ func (p *parser) Parse(st envAlteration) Nodes {
     case tokenEOF:
       break
     case tokenEq:
-      p.nextItem()
+      p.eatCurrentItem()
       if p.CurrentItem().typ == tokenEq {
         n = p.parseTitle()
       } else {
@@ -191,7 +201,7 @@ func (p *parser) parseTitle() Node {
 
   for item.typ == tokenEq {
     exitSequence = append(exitSequence, tokenEq)
-    item = p.nextItem()
+    item = p.eatCurrentItem()
     level += 1
   }
   defer p.handleTitleError(p.pos, level)
