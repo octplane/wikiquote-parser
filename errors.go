@@ -12,6 +12,24 @@ const (
   ignoreSectionBehavior
 )
 
+const (
+  EOFException = iota
+  RuntimeException
+)
+
+type inspectableClass int
+
+func (is inspectableClass) String() string {
+  switch is {
+  case EOFException:
+    return "End of file Exception"
+  case RuntimeException:
+    return "Runtime exception"
+  }
+
+  panic(fmt.Sprintf("Unexpected inspectable class %d", is))
+}
+
 type inspectable struct {
   parser   *parser
   pos      int
@@ -20,6 +38,7 @@ type inspectable struct {
   start    int
   err      interface{}
   behavior behaviorOnError
+  class    inspectableClass
 }
 
 func (p *parser) defaultInspectable(i *inspectable) {
@@ -27,10 +46,17 @@ func (p *parser) defaultInspectable(i *inspectable) {
   i.pos = p.pos
   i.delta = 8
   i.behavior = abortBehavior
+  i.class = RuntimeException
 }
 
 func createInspectable(p *parser, pos int, m string, e interface{}) inspectable {
-  is := inspectable{parser: p, pos: pos - 1, message: m, delta: 8, start: p.pos, err: e, behavior: abortBehavior}
+  is := inspectable{}
+  p.defaultInspectable(&is)
+  is.pos = pos - 1
+  is.message = m
+  is.start = p.pos
+  is.err = e
+
   return is
 }
 
@@ -87,6 +113,7 @@ func outOfBoundsPanic(p *parser, s int) {
   p.defaultInspectable(&myerr)
   myerr.message = msg
   myerr.behavior = ignoreSectionBehavior
+  myerr.class = EOFException
   panic(myerr)
 }
 
@@ -135,17 +162,25 @@ func (p *parser) handleParseError() {
     case inspectable:
       err.(inspectable).handle()
       insp := err.(inspectable)
+      last_valid_inspectable := insp
       ok := true
       var behavior behaviorOnError
       for ok {
+        last_valid_inspectable = insp
         behavior = insp.behavior
         insp, ok = insp.err.(inspectable)
       }
       switch behavior {
       case abortBehavior:
-        panic("Abort")
+        panic(last_valid_inspectable)
       case ignoreSectionBehavior:
-        panic("Ignore")
+        // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
+        // and start parsing again
+        // fmt.Println(last_valid_inspectable)
+        // rewind_at = last_valid_inspectable.start
+
+        panic("hammer time")
+
       }
     default:
       p.syntaxEError(err, p.pos, "Error not handled by the parser :-/")

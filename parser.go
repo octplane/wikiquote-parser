@@ -14,9 +14,9 @@ type parser struct {
   ignoreNextBlock bool
 }
 
-func create_parser(items []item) *parser {
+func create_parser(tokens []item) *parser {
   p := &parser{
-    items:           items,
+    items:           tokens,
     start:           0,
     pos:             0,
     logger:          log.New(os.Stdout, "[Parse]\t", log.LstdFlags),
@@ -54,6 +54,8 @@ func (p *parser) nextBlock() {
       }
     }
   }
+  // if we arrive here, we are at eof
+  outOfBoundsPanic(p, p.start)
 }
 
 func (p *parser) next() {

@@ -11,6 +11,22 @@ func assertEqual(t *testing.T, desc string, expected interface{}, provided inter
   }
 }
 
+func assertException(t *testing.T, desc string, cls inspectableClass) {
+  if err := recover(); err != nil {
+    is, ok := err.(inspectable)
+    if ok {
+      if is.class == cls {
+        return
+      } else {
+        t.Errorf("Expected exception %s, got exception %s", cls.String(), is.class.String())
+      }
+    } else {
+      t.Errorf("Expected exception %s, got %+v", cls.String(), err)
+    }
+  }
+  t.Errorf("Expected exception %s, got nothing", desc)
+}
+
 func TestTokenizer1(t *testing.T) {
   text := "Bar baz baz"
   toks := Tokenize(fmt.Sprintf("%s\n", text))
@@ -199,12 +215,29 @@ func TestComplexLink(t *testing.T) {
 
 }
 
-func TestSyntaxError(t *testing.T) {
-  doc := "==== Malformed title===\n\nAnother Block"
-
-  Parse(Tokenize(doc))
-  // if tree[0].params[1][0].val != doc {
-  //   t.Errorf("Invalid parameter, got %q, expected %q", doc, tree[0].params[1][0].val)
-  // }
-
+func TestNextBlockParser(t *testing.T) {
+  txt := "this is some text\n\nthis is another block\n"
+  toks := Tokenize(txt)
+  parser := create_parser(toks)
+  parser.nextBlock()
+  assertEqual(t, "Next block position", 3, parser.pos)
 }
+
+func TestNoNextBlockParser(t *testing.T) {
+  defer assertException(t, "Next block missing should trigger EOF", EOFException)
+  txt := "There is no next block\n"
+  toks := Tokenize(txt)
+  parser := create_parser(toks)
+  parser.nextBlock()
+  assertEqual(t, "Next block position", 3, parser.pos)
+}
+
+// func TestSyntaxError(t *testing.T) {
+//   doc := "Some line\n==== Malformed title===\n\nAnother Block"
+
+//   Parse(Tokenize(doc))
+//   // if tree[0].params[1][0].val != doc {
+//   //   t.Errorf("Invalid parameter, got %q, expected %q", doc, tree[0].params[1][0].val)
+//   // }
+
+// }
