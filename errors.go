@@ -218,7 +218,14 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
       rewind_at := last_valid_inspectable.start
       p.pos = rewind_at
       p.nextBlock()
-      ret = Parse(p.items[p.pos:])
+      // Re-assemble nodes from beginning and ignored fragment
+      ret = make([]Node, 0)
+      for _, n := range p.nodes {
+        ret = append(ret, n)
+      }
+      for _, n := range Parse(p.items[p.pos:]) {
+        ret = append(ret, n)
+      }
       return ret
     }
   default:

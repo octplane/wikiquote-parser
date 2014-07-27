@@ -236,6 +236,6 @@ func TestSyntaxError(t *testing.T) {
   doc := "Some line\n==== Malformed title===\n\nAnother Block"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 6, len(p))
+  assertEqual(t, "Node count", 5, len(p))
 
 }

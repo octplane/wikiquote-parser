@@ -22,11 +22,12 @@ func create_parser(tokens []item) *parser {
     pos:             0,
     logger:          log.New(os.Stdout, "[Parse]\t", log.LstdFlags),
     ignoreNextBlock: false,
+    nodes:           make([]Node, 0),
   }
   return p
 }
 
-func Parse(items []item) (ret Nodes) {
+func ParseWithEnv(items []item, env envAlteration) (ret Nodes) {
   p := create_parser(items)
   ret = make([]Node, 0)
 
@@ -36,8 +37,12 @@ func Parse(items []item) (ret Nodes) {
     }
   }()
 
-  ret = p.Parse(envAlteration{})
+  ret = p.Parse(env)
   return ret
+}
+
+func Parse(items []item) (ret Nodes) {
+  return ParseWithEnv(items, envAlteration{})
 }
 
 func (p *parser) currentItem() item {
@@ -170,6 +175,7 @@ func (p *parser) Parse(st envAlteration) Nodes {
       }
     }
     if n.typ != nodeInvalid {
+      p.nodes = append(p.nodes, n)
       ret = append(ret, n)
     }
 
@@ -260,7 +266,6 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
 }
 
 func (p *parser) subparse(st envAlteration) Nodes {
-  var res Nodes
-  res = p.Parse(st)
+  res := p.Parse(st)
   return res
 }
