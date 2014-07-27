@@ -25,11 +25,18 @@ func create_parser(tokens []item) *parser {
   return p
 }
 
-func Parse(items []item) Nodes {
+func Parse(items []item) (ret Nodes) {
   p := create_parser(items)
-  defer p.handleParseError()
+  ret = make([]Node, 0)
 
-  return p.Parse(envAlteration{})
+  defer func() {
+    if err := recover(); err != nil {
+      ret = p.handleParseError(err, ret)
+    }
+  }()
+
+  ret = p.Parse(envAlteration{})
+  return ret
 }
 
 func (p *parser) currentItem() item {
@@ -46,10 +53,12 @@ func (p *parser) eatCurrentItem() item {
   return ret
 }
 
+// Start at next double LF
 func (p *parser) nextBlock() {
   for p.pos < len(p.items) {
     if p.eatCurrentItem().typ == tokenLF {
       if p.eatCurrentItem().typ == tokenLF {
+        p.backupI(2)
         return
       }
     }

@@ -12,7 +12,7 @@ type item struct {
 type token int
 
 const (
-  itemError = iota
+  itemError = token(iota)
   templateName
   templateStart
   templateEnd

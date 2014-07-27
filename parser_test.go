@@ -220,7 +220,7 @@ func TestNextBlockParser(t *testing.T) {
   toks := Tokenize(txt)
   parser := create_parser(toks)
   parser.nextBlock()
-  assertEqual(t, "Next block position", 3, parser.pos)
+  assertEqual(t, "Next block position", 1, parser.pos)
 }
 
 func TestNoNextBlockParser(t *testing.T) {
@@ -232,12 +232,10 @@ func TestNoNextBlockParser(t *testing.T) {
   assertEqual(t, "Next block position", 3, parser.pos)
 }
 
-// func TestSyntaxError(t *testing.T) {
-//   doc := "Some line\n==== Malformed title===\n\nAnother Block"
+func TestSyntaxError(t *testing.T) {
+  doc := "Some line\n==== Malformed title===\n\nAnother Block"
 
-//   Parse(Tokenize(doc))
-//   // if tree[0].params[1][0].val != doc {
-//   //   t.Errorf("Invalid parameter, got %q, expected %q", doc, tree[0].params[1][0].val)
-//   // }
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Node count", 6, len(p))
 
-// }
+}

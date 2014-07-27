@@ -12,6 +12,16 @@ const (
   ignoreSectionBehavior
 )
 
+func (be behaviorOnError) String() string {
+  switch be {
+  case abortBehavior:
+    return "Aborting Exception"
+  case ignoreSectionBehavior:
+    return "Ignore current section Exception"
+  }
+  panic(fmt.Sprintf("Unknown behavior %d", be))
+}
+
 const (
   EOFException = iota
   RuntimeException
@@ -61,22 +71,52 @@ func createInspectable(p *parser, pos int, m string, e interface{}) inspectable 
 }
 
 func (me inspectable) handle() {
+  rL := report
+  if me.behavior == ignoreSectionBehavior {
+    rL = noReport
+  }
+
   switch me.err.(type) {
   case inspectable:
-    me.err.(inspectable).handleError()
+    rL = me.err.(inspectable).handleError(rL)
   }
-  me.handleError()
+  if rL == report {
+    me.handleError(rL)
+  }
 }
 
-func (me inspectable) handleError() {
-  me.parser.logger.Println(me.message)
+type reportLevel int
+
+const (
+  noReport = reportLevel(iota)
+  report
+)
+
+func (rl reportLevel) String() string {
+  switch rl {
+  case noReport:
+    return "No report"
+  case report:
+    return "Report"
+  }
+  panic("Unknown report level")
+}
+
+func (me inspectable) handleError(parentRL reportLevel) reportLevel {
+  rl := parentRL
+  if me.behavior == ignoreSectionBehavior {
+    rl = noReport
+  } else {
+    me.parser.logger.Printf("parentrl : %s, message: %s", parentRL.String(), me.message)
+  }
   _, ok := me.err.(inspectable)
-  if !ok {
+  if !ok && rl == report {
     if me.err != nil {
       me.parser.logger.Printf("Original error was: %+v", me.err)
     }
     me.dumpStream()
   }
+  return rl
 }
 
 func (me *inspectable) dumpStream() {
@@ -156,36 +196,34 @@ func (p *parser) inspect(ahead int) {
 }
 
 // called by main parser or subparser when something wrong appears
-func (p *parser) handleParseError() {
-  if err := recover(); err != nil {
-    switch err.(type) {
-    case inspectable:
-      err.(inspectable).handle()
-      insp := err.(inspectable)
-      last_valid_inspectable := insp
-      ok := true
-      var behavior behaviorOnError
-      for ok {
-        last_valid_inspectable = insp
-        behavior = insp.behavior
-        insp, ok = insp.err.(inspectable)
-      }
-      switch behavior {
-      case abortBehavior:
-        panic(last_valid_inspectable)
-      case ignoreSectionBehavior:
-        // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
-        // and start parsing again
-        // fmt.Println(last_valid_inspectable)
-        // rewind_at = last_valid_inspectable.start
-
-        panic("hammer time")
-
-      }
-    default:
-      p.syntaxEError(err, p.pos, "Error not handled by the parser :-/")
+func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
+  switch err.(type) {
+  case inspectable:
+    err.(inspectable).handle()
+    insp := err.(inspectable)
+    last_valid_inspectable := insp
+    ok := true
+    var behavior behaviorOnError
+    for ok {
+      last_valid_inspectable = insp
+      behavior = insp.behavior
+      insp, ok = insp.err.(inspectable)
     }
-    // Go down in the error hierarchy
-
+    switch behavior {
+    case abortBehavior:
+      panic(last_valid_inspectable)
+    case ignoreSectionBehavior:
+      // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
+      // and start parsing again
+      rewind_at := last_valid_inspectable.start
+      p.pos = rewind_at
+      p.nextBlock()
+      ret = Parse(p.items[p.pos:])
+      return ret
+    }
+  default:
+    p.syntaxEError(err, p.pos, "Error not handled by the parser :-/")
   }
+  // Go down in the error hierarchy
+  return ret
 }

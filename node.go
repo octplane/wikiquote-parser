@@ -40,7 +40,7 @@ func (n *Node) StringParam(k string) string {
 type nodeType int
 
 const (
-  nodeInvalid = iota
+  nodeInvalid = nodeType(iota)
   nodeText
   nodeTitle
   nodeLink
