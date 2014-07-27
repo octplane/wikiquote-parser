@@ -32,7 +32,7 @@ func Parse(items []item) Nodes {
   return p.Parse(envAlteration{})
 }
 
-func (p *parser) CurrentItem() item {
+func (p *parser) currentItem() item {
   if p.pos > len(p.items) {
     outOfBoundsPanic(p, p.start)
   }
@@ -41,7 +41,7 @@ func (p *parser) CurrentItem() item {
 }
 
 func (p *parser) eatCurrentItem() item {
-  ret := p.CurrentItem()
+  ret := p.currentItem()
   p.pos += 1
   return ret
 }
@@ -117,13 +117,13 @@ func (p *parser) Parse(st envAlteration) Nodes {
   ret := make([]Node, 0)
 
   for p.pos < len(p.items)-1 {
-    it := p.CurrentItem()
+    it := p.currentItem()
 
     // If the exit Sequence match, abort immediately
     if len(st.exitSequence) > 0 {
       matching := 0
       for _, ty := range st.exitSequence {
-        if p.CurrentItem().typ == ty {
+        if p.currentItem().typ == ty {
           matching += 1
           p.next()
         } else {
@@ -150,7 +150,7 @@ func (p *parser) Parse(st envAlteration) Nodes {
       break
     case tokenEq:
       p.eatCurrentItem()
-      if p.CurrentItem().typ == tokenEq {
+      if p.currentItem().typ == tokenEq {
         n = p.parseTitle()
       } else {
         p.backup()
@@ -161,7 +161,7 @@ func (p *parser) Parse(st envAlteration) Nodes {
       ret = append(ret, n)
     }
 
-    it = p.CurrentItem()
+    it = p.currentItem()
     for _, typ := range st.exitTypes {
       if it.typ == token(typ) {
         return ret
@@ -196,7 +196,7 @@ func (p *parser) parseTitle() Node {
   var ret Node
   exitSequence := make([]token, 0)
 
-  item := p.CurrentItem()
+  item := p.currentItem()
   level := 0
 
   for item.typ == tokenEq {
@@ -224,7 +224,7 @@ func (p *parser) parseTitle() Node {
 func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
   cont := true
   for cont {
-    elt := p.CurrentItem()
+    elt := p.currentItem()
     switch elt.typ {
     case stop:
       return
@@ -232,7 +232,7 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
       p.next()
     case itemText:
       p.next()
-      if p.CurrentItem().typ == tokenEq {
+      if p.currentItem().typ == tokenEq {
         k := elt.val
         p.next()
         node.namedParams[k] = p.subparse(envAlteration{exitTypes: []token{itemPipe, stop}})
