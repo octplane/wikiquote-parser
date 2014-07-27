@@ -12,6 +12,7 @@ type parser struct {
   pos             int
   logger          *log.Logger
   ignoreNextBlock bool
+  nodes           Nodes
 }
 
 func create_parser(tokens []item) *parser {
