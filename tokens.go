@@ -22,6 +22,7 @@ const (
   itemText
   itemPipe
   tokenEq
+  tokenLF
   controlStruct
   tokenEOF
 )
@@ -45,6 +46,7 @@ func init() {
     rightLink:     linkEnd,
     pipe:          itemPipe,
     eq:            tokenEq,
+    lf:            tokenLF,
   }
 }
 
@@ -68,6 +70,8 @@ func (i item) String() string {
       return fmt.Sprintf("%s[...]%s", i.val[:17], i.val[len(i.val)-17:])
     }
     return i.val
+  case tokenLF:
+    return "\\n"
   case itemPipe:
     return fmt.Sprintf("%s", desc)
   case controlStruct:

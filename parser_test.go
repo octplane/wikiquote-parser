@@ -14,7 +14,7 @@ func assertEqual(t *testing.T, desc string, expected interface{}, provided inter
 func TestTokenizer1(t *testing.T) {
   text := "Bar baz baz"
   toks := Tokenize(fmt.Sprintf("%s\n", text))
-  assertEqual(t, "number of tokens", 2, len(toks))
+  assertEqual(t, "number of tokens", 3, len(toks))
 }
 
 func TestTokenizer2(t *testing.T) {
