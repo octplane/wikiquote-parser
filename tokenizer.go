@@ -169,6 +169,7 @@ func lexText(l *lexer) stateFn {
 }
 
 func Tokenize(body string) tokens {
+  fmt.Println("Starting Tokenize")
   ret := make([]item, 0)
   l := lex("", body)
   go l.run()

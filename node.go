@@ -46,6 +46,7 @@ const (
   nodeLink
   nodeTemplate
   nodeEq
+  nodeUnknown
 )
 
 func (n nodeType) String() string {
@@ -60,6 +61,8 @@ func (n nodeType) String() string {
     return " EQ "
   case nodeTitle:
     return " Title "
+  case nodeUnknown:
+    return " UNK "
   default:
     return "????"
   }

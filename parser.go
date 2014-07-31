@@ -7,77 +7,56 @@ import (
 )
 
 type parser struct {
+  name            string
   items           []item
   start           int
   pos             int
+  consumed        int
   logger          *log.Logger
   ignoreNextBlock bool
-  nodes           Nodes
 }
 
-func create_parser(tokens []item) *parser {
+func create_parser(name string, tokens []item) *parser {
   p := &parser{
+    name:            name,
     items:           tokens,
     start:           0,
     pos:             0,
+    consumed:        0,
     logger:          log.New(os.Stdout, "[Parse]\t", log.LstdFlags),
     ignoreNextBlock: false,
-    nodes:           make([]Node, 0),
   }
+
   return p
 }
 
-func ParseWithEnv(items []item, env envAlteration) (ret Nodes) {
-  p := create_parser(items)
-  ret = make([]Node, 0)
-
-  defer func() {
-    if err := recover(); err != nil {
-      ret = p.handleParseError(err, ret)
-    }
-  }()
-
-  ret = p.Parse(env)
-  return ret
-}
-
-func Parse(items []item) (ret Nodes) {
-  return ParseWithEnv(items, envAlteration{})
-}
-
 func (p *parser) currentItem() item {
-  if p.pos > len(p.items) {
-    outOfBoundsPanic(p, p.start)
+  if p.pos > len(p.items)-1 {
+    return item{typ: tokenEOF}
   }
 
   return p.items[p.pos]
 }
 
+func (p *parser) consume(count int) {
+  if p.pos+count > -1 && p.pos+count < len(p.items) {
+    p.pos += count
+    p.consumed += count
+  }
+}
+
+func (p *parser) backup(count int) {
+  p.consume(-1 * count)
+}
+
 func (p *parser) eatCurrentItem() item {
   ret := p.currentItem()
   p.pos += 1
+  p.consumed += 1
   return ret
 }
 
-// Start at next double LF
-func (p *parser) nextBlock() {
-  for p.pos < len(p.items) {
-    if p.eatCurrentItem().typ == tokenLF {
-      if p.eatCurrentItem().typ == tokenLF {
-        p.backupI(2)
-        return
-      }
-    }
-  }
-  // if we arrive here, we are at eof
-  outOfBoundsPanic(p, p.start)
-}
-
-func (p *parser) next() {
-  p.pos += 1
-}
-
-func (p *parser) eat(types ...token) {
+func (p *parser) eatUntil(types ...token) {
   it := p.eatCurrentItem()
   exp := make([]string, 0)
 
@@ -88,24 +67,55 @@ func (p *parser) eat(types ...token) {
     exp = append(exp, token(typ).String())
   }
   panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.val, exp, it.typ.String()))
-
 }
 
-func (p *parser) backup() {
-  p.backupI(1)
+func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
+  cont := true
+  for cont {
+    elt := p.currentItem()
+    switch elt.typ {
+    case stop:
+      return
+    case itemPipe:
+      p.consume(1)
+    case itemText:
+      p.consume(1)
+      if p.currentItem().typ == tokenEq {
+        k := elt.val
+        p.consume(1)
+        params, consumed := ParseWithEnv(fmt.Sprintf("%s::Param for %s", p.name, k), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
+        node.namedParams[k] = params
+        p.consume(consumed)
+      } else {
+        p.backup(1)
+        params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous parameter", p.name), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
+        node.params = append(node.params, params)
+        p.consume(consumed)
+      }
+    default:
+      params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous Complex parameter", p.name), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
+      node.params = append(node.params, params)
+      p.consume(consumed)
+    }
+  }
 }
 
-func (p *parser) backupI(count int) {
-  p.pos -= count
-}
-
-func (p *parser) ahead(count int) {
-  p.pos += count
+// Start at next double LF
+func (p *parser) nextBlock() {
+  for p.pos < len(p.items) {
+    if p.eatCurrentItem().typ == tokenLF {
+      if p.eatCurrentItem().typ == tokenLF {
+        return
+      }
+    }
+  }
+  p.pos = len(p.items) - 1
 }
 
 type envAlteration struct {
-  exitTypes    []token
-  exitSequence []token
+  exitTypes       []token
+  exitSequence    []token
+  forbiddenMarkup []markup
 }
 
 func (ev *envAlteration) String() string {
@@ -130,28 +140,50 @@ func (ev *envAlteration) String() string {
   return st
 }
 
-func (p *parser) Parse(st envAlteration) Nodes {
-  ret := make([]Node, 0)
+func ParseWithEnv(title string, items []item, env envAlteration) (ret Nodes, consumed int) {
+  p := create_parser(title, items)
+  fmt.Printf("%s: Creating Parser (%s)\n", title, env.String())
+  ret = make([]Node, 0)
+
+  ret = p.parse(env)
+  fmt.Printf("%s: Consumed %d / %d\n", title, p.consumed, len(p.items))
+  return ret, p.consumed
+}
+
+func Parse(items []item) (ret Nodes) {
+  nodes, _ := ParseWithConsumed(items)
+  return nodes
+}
+
+func ParseWithConsumed(items []item) (ret Nodes, consumed int) {
+  return ParseWithEnv("top-level", items, envAlteration{})
+}
+
+func (p *parser) parse(env envAlteration) (ret Nodes) {
+  ret = make([]Node, 0)
+
+  it := p.currentItem()
+
+  fmt.Println("Exit sequence", env.String())
 
   for p.pos < len(p.items)-1 {
-    it := p.currentItem()
 
     // If the exit Sequence match, abort immediately
-    if len(st.exitSequence) > 0 {
+    if len(env.exitSequence) > 0 {
       matching := 0
-      for _, ty := range st.exitSequence {
+      for _, ty := range env.exitSequence {
         if p.currentItem().typ == ty {
           matching += 1
-          p.next()
+          p.consume(1)
         } else {
           break
         }
       }
-      if matching == len(st.exitSequence) {
-        p.backupI(len(st.exitSequence))
+      if matching == len(env.exitSequence) {
+        p.backup(len(env.exitSequence))
         return ret
       } else {
-        p.backupI(matching)
+        p.backup(matching)
       }
     }
 
@@ -166,106 +198,38 @@ func (p *parser) Parse(st envAlteration) Nodes {
     case tokenEOF:
       break
     case tokenEq:
-      p.eatCurrentItem()
-      if p.currentItem().typ == tokenEq {
-        n = p.parseTitle()
-      } else {
-        p.backup()
-        n = Node{typ: nodeText, val: "="}
+      n = Node{typ: nodeText, val: "="}
+      titlable := false
+      if p.pos > 0 {
+        p.backup(1)
+        if p.currentItem().typ == tokenLF {
+          titlable = true
+        }
+        p.consume(1)
+      } else if p.pos == 0 {
+        titlable = true
       }
+      if titlable && p.currentItem().typ == tokenEq {
+        n = p.parseTitle()
+      }
+    default:
+      n = Node{typ: nodeUnknown, val: it.val}
     }
-    if n.typ != nodeInvalid {
-      p.nodes = append(p.nodes, n)
-      ret = append(ret, n)
-    }
+    ret = append(ret, n)
 
     it = p.currentItem()
-    for _, typ := range st.exitTypes {
+    for _, typ := range env.exitTypes {
       if it.typ == token(typ) {
         return ret
       }
     }
-    p.pos += 1
-  }
-  return ret
-}
 
-func (p *parser) ParseLink() Node {
-  ret := Node{typ: nodeLink, namedParams: make(map[string]Nodes), params: make([]Nodes, 0)}
-
-  p.eat(linkStart)
-  ret.namedParams["link"] = p.subparse(envAlteration{exitTypes: []token{itemPipe, linkEnd}})
-  p.scanSubArgumentsUntil(&ret, linkEnd)
-
-  return ret
-}
-
-func (p *parser) ParseTemplate() Node {
-  ret := Node{typ: nodeTemplate, namedParams: make(map[string]Nodes), params: make([]Nodes, 0)}
-
-  p.eat(templateStart)
-  ret.namedParams["name"] = p.subparse(envAlteration{exitTypes: []token{itemPipe, templateEnd}})
-  p.scanSubArgumentsUntil(&ret, templateEnd)
-
-  return ret
-}
-
-func (p *parser) parseTitle() Node {
-  var ret Node
-  exitSequence := make([]token, 0)
-
-  item := p.currentItem()
-  level := 0
-
-  for item.typ == tokenEq {
-    exitSequence = append(exitSequence, tokenEq)
-    item = p.eatCurrentItem()
-    level += 1
-  }
-  defer p.handleTitleError(p.pos, level)
-
-  if level < 2 {
-    ret = Node{typ: nodeEq}
-    return ret
-  }
-  // put last seen token in front of here
-  p.backup()
-
-  ret = Node{typ: nodeTitle, namedParams: make(map[string]Nodes), params: make([]Nodes, 0)}
-  ret.namedParams["level"] = Nodes{Node{typ: nodeText, val: fmt.Sprintf("%d", level)}}
-  ret.namedParams["title"] = p.subparse(envAlteration{exitSequence: exitSequence})
-  p.ahead(level)
-
-  return ret
-}
-
-func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
-  cont := true
-  for cont {
-    elt := p.currentItem()
-    switch elt.typ {
-    case stop:
-      return
-    case itemPipe:
-      p.next()
-    case itemText:
-      p.next()
-      if p.currentItem().typ == tokenEq {
-        k := elt.val
-        p.next()
-        node.namedParams[k] = p.subparse(envAlteration{exitTypes: []token{itemPipe, stop}})
-      } else {
-        p.backup()
-        node.params = append(node.params, p.subparse(envAlteration{exitTypes: []token{itemPipe, stop}}))
-      }
-    default:
-      node.params = append(node.params, p.subparse(envAlteration{exitTypes: []token{itemPipe, stop}}))
-    }
+    it = p.eatCurrentItem()
   }
 
-}
+  if (len(env.exitSequence) > 0 || len(env.exitTypes) > 0) && p.currentItem().typ == tokenEOF {
+    panic("EOF reached inside sub parser")
+  }
 
-func (p *parser) subparse(st envAlteration) Nodes {
-  res := p.Parse(st)
-  return res
+  return ret
 }

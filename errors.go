@@ -215,17 +215,21 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
     case ignoreSectionBehavior:
       // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
       // and start parsing again
+      fmt.Println("Last inspectable", last_valid_inspectable)
       rewind_at := last_valid_inspectable.start
       p.pos = rewind_at
       p.nextBlock()
       // Re-assemble nodes from beginning and ignored fragment
-      ret = make([]Node, 0)
-      for _, n := range p.nodes {
-        ret = append(ret, n)
-      }
-      for _, n := range Parse(p.items[p.pos:]) {
-        ret = append(ret, n)
-      }
+      // ret = make([]Node, 0)
+      // for _, n := range p.nodes {
+      //   ret = append(ret, n)
+      // }
+      // ret = append(ret, Node{typ: nodeText, val: fmt.Sprintf("> (rewinded at %d )<", rewind_at)})
+      // if p.pos < len(p.items) {
+      //   for _, n := range Parse(p.items[p.pos:]) {
+      //     ret = append(ret, n)
+      //   }
+      // }
       return ret
     }
   default:

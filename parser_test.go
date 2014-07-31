@@ -53,8 +53,8 @@ func TestTitle(t *testing.T) {
 }
 
 func TestTitle2(t *testing.T) {
-  text := "Bar baz baz"
-  nodes := Parse(Tokenize(fmt.Sprintf("====%s====\n===%s===\n", text, text)))
+  nodes := Parse(Tokenize("====Titre 4====\n===Titre 3===\n"))
+  fmt.Println(nodes)
   assertEqual(t, "type for Node", nodeType(nodeTitle).String(), nodes[0].typ.String())
   assertEqual(t, "Title Level for Node", "3", nodes[1].namedParams["level"][0].val)
 }
@@ -218,18 +218,17 @@ func TestComplexLink(t *testing.T) {
 func TestNextBlockParser(t *testing.T) {
   txt := "this is some text\n\nthis is another block\n"
   toks := Tokenize(txt)
-  parser := create_parser(toks)
+  parser := create_parser("top", toks)
   parser.nextBlock()
-  assertEqual(t, "Next block position", 1, parser.pos)
+  assertEqual(t, "Next block position", 3, parser.pos)
 }
 
 func TestNoNextBlockParser(t *testing.T) {
-  defer assertException(t, "Next block missing should trigger EOF", EOFException)
   txt := "There is no next block\n"
   toks := Tokenize(txt)
-  parser := create_parser(toks)
+  parser := create_parser("top", toks)
   parser.nextBlock()
-  assertEqual(t, "Next block position", 3, parser.pos)
+  assertEqual(t, "Next block position is a EOF", len(parser.items)-1, parser.pos)
 }
 
 func TestSyntaxError(t *testing.T) {
@@ -241,10 +240,11 @@ func TestSyntaxError(t *testing.T) {
 }
 
 func TestSyntaxError2(t *testing.T) {
-  doc := "Some line\n==== Malformed title===\n\nAnother Block\n\n=Plop===\n\nPlip"
+  fmt.Println("HAHA")
+  doc := "Some line\n==== Malformed title===\n\nAnother Block\n\n=This title is broken===\n\nEnd of block"
 
   p := Parse(Tokenize(doc))
   fmt.Println(p)
-  assertEqual(t, "Node count", 5, len(p))
+  assertEqual(t, "Node count", 6, len(p))
 
 }
