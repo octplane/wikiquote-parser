@@ -222,7 +222,7 @@ func TestNextBlockParser(t *testing.T) {
   toks := Tokenize(txt)
   parser := create_parser("top", toks)
   parser.nextBlock()
-  assertEqual(t, "Next block position", 2, parser.pos)
+  assertEqual(t, "Next block position", 3, parser.pos)
 }
 
 func TestNoNextBlockParser(t *testing.T) {
@@ -238,7 +238,7 @@ func TestSyntaxError(t *testing.T) {
 
   p := Parse(Tokenize(doc))
   fmt.Println(p)
-  assertEqual(t, "Node count", 5, len(p))
+  assertEqual(t, "Node count", 4, len(p))
 
 }
 

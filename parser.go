@@ -101,12 +101,14 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
 // Start at next double LF
 func (p *parser) nextBlock() {
   for p.pos < len(p.items) {
-    if p.eatCurrentItem().typ == tokenLF {
-      if p.eatCurrentItem().typ == tokenLF {
-        p.backup(1)
+    if p.currentItem().typ == tokenLF {
+      p.consume(1)
+      if p.currentItem().typ == tokenLF {
+        p.consume(1)
         return
       }
     }
+    p.consume(1)
   }
   p.pos = len(p.items) - 1
 }
@@ -168,9 +170,10 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
   }()
 
   fmt.Println("Exit sequence", env.String())
+  p.pos = 0
+  it := p.currentItem()
 
-  for p.pos < len(p.items) {
-    it := p.eatCurrentItem()
+  for it.typ != tokenEOF {
     fmt.Printf("token %s\n", it.String())
     // If the exit Sequence match, abort immediately
     if len(env.exitSequence) > 0 {
@@ -196,27 +199,19 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
     case itemText:
       n = Node{typ: nodeText, val: it.val}
     case linkStart:
-      p.backup(1)
       n = p.ParseLink()
     case templateStart:
-      p.backup(1)
       n = p.ParseTemplate()
-    case tokenEOF:
-      fmt.Println("EOF...")
-      continue
     case tokenEq:
       n = Node{typ: nodeText, val: "="}
-      if p.pos == 1 {
-        p.backup(1)
+      if p.pos == 0 {
         n = p.parseTitle()
       }
     case tokenLF:
       fmt.Println("LF")
-      fmt.Println(p.currentItem())
 
       p.consume(1)
       if p.currentItem().typ == tokenEq {
-        p.backup(1)
         n = p.parseTitle()
       } else {
         p.backup(1)
@@ -235,6 +230,9 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
         return ret
       }
     }
+
+    p.consume(1)
+    it = p.currentItem()
 
   }
 

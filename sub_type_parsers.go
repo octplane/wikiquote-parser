@@ -48,7 +48,7 @@ func (p *parser) parseTitle() (ret Node) {
   }
 
   // Be cool with next reader, give him the LF
-  p.consume(consumed - 1)
+  p.consume(consumed - 2)
   fmt.Println("And now", p.items[p.pos:], consumed)
 
   return ret
