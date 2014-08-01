@@ -103,6 +103,7 @@ func (p *parser) nextBlock() {
   for p.pos < len(p.items) {
     if p.eatCurrentItem().typ == tokenLF {
       if p.eatCurrentItem().typ == tokenLF {
+        p.backup(1)
         return
       }
     }
@@ -207,7 +208,6 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       n = Node{typ: nodeText, val: "="}
       if p.pos == 1 {
         p.backup(1)
-
         n = p.parseTitle()
       }
     case tokenLF:
@@ -219,7 +219,6 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
         p.backup(1)
         n = p.parseTitle()
       } else {
-        fmt.Println(p.currentItem())
         p.backup(1)
         n = Node{typ: nodeText, val: "\n"}
       }
