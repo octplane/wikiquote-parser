@@ -18,7 +18,7 @@ type Node struct {
 
 func (n *Node) String() string {
   switch n.typ {
-  case nodeText:
+  case nodeText, nodeInvalid:
     return fmt.Sprintf("%q", n.val)
   }
   o := fmt.Sprintf("Node: %s\n", n.typ.String())
@@ -63,6 +63,8 @@ func (n nodeType) String() string {
     return " Title "
   case nodeUnknown:
     return " UNK "
+  case nodeInvalid:
+    return " INV "
   default:
     return "????"
   }

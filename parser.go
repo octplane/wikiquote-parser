@@ -39,10 +39,8 @@ func (p *parser) currentItem() item {
 }
 
 func (p *parser) consume(count int) {
-  if p.pos+count > -1 && p.pos+count < len(p.items) {
-    p.pos += count
-    p.consumed += count
-  }
+  p.pos += count
+  p.consumed += count
 }
 
 func (p *parser) backup(count int) {
@@ -162,12 +160,17 @@ func ParseWithConsumed(items []item) (ret Nodes, consumed int) {
 func (p *parser) parse(env envAlteration) (ret Nodes) {
   ret = make([]Node, 0)
 
-  it := p.currentItem()
+  defer func() {
+    if err := recover(); err != nil {
+      ret = p.handleParseError(err, ret)
+    }
+  }()
 
   fmt.Println("Exit sequence", env.String())
 
-  for p.pos < len(p.items)-1 {
-
+  for p.pos < len(p.items) {
+    it := p.eatCurrentItem()
+    fmt.Printf("token %s\n", it.String())
     // If the exit Sequence match, abort immediately
     if len(env.exitSequence) > 0 {
       matching := 0
@@ -180,7 +183,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
         }
       }
       if matching == len(env.exitSequence) {
-        p.backup(len(env.exitSequence))
+        fmt.Println("Found exit sequence", p.items[p.pos])
         return ret
       } else {
         p.backup(matching)
@@ -192,29 +195,39 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
     case itemText:
       n = Node{typ: nodeText, val: it.val}
     case linkStart:
+      p.backup(1)
       n = p.ParseLink()
     case templateStart:
+      p.backup(1)
       n = p.ParseTemplate()
     case tokenEOF:
-      break
+      fmt.Println("EOF...")
+      continue
     case tokenEq:
       n = Node{typ: nodeText, val: "="}
-      titlable := false
-      if p.pos > 0 {
+      if p.pos == 1 {
         p.backup(1)
-        if p.currentItem().typ == tokenLF {
-          titlable = true
-        }
-        p.consume(1)
-      } else if p.pos == 0 {
-        titlable = true
-      }
-      if titlable && p.currentItem().typ == tokenEq {
+
         n = p.parseTitle()
       }
+    case tokenLF:
+      fmt.Println("LF")
+      fmt.Println(p.currentItem())
+
+      p.consume(1)
+      if p.currentItem().typ == tokenEq {
+        p.backup(1)
+        n = p.parseTitle()
+      } else {
+        fmt.Println(p.currentItem())
+        p.backup(1)
+        n = Node{typ: nodeText, val: "\n"}
+      }
     default:
+      fmt.Printf("UNK", it.String())
       n = Node{typ: nodeUnknown, val: it.val}
     }
+    fmt.Println("Appending", n.String())
     ret = append(ret, n)
 
     it = p.currentItem()
@@ -224,11 +237,10 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       }
     }
 
-    it = p.eatCurrentItem()
   }
 
   if (len(env.exitSequence) > 0 || len(env.exitTypes) > 0) && p.currentItem().typ == tokenEOF {
-    panic("EOF reached inside sub parser")
+    outOfBoundsPanic(p, len(p.items))
   }
 
   return ret

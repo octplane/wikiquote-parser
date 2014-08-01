@@ -42,12 +42,14 @@ func TestTokenizer2(t *testing.T) {
 func TestEqual(t *testing.T) {
   text := "Bar=baz"
   nodes := Parse(Tokenize(text))
+  fmt.Println(nodes)
   assertEqual(t, "number of nodes", 3, len(nodes))
 }
 
 func TestTitle(t *testing.T) {
   text := "Bar baz baz"
   nodes := Parse(Tokenize(fmt.Sprintf("====%s====\n", text)))
+  fmt.Println(nodes.String())
   assertEqual(t, "type for Node", nodeType(nodeTitle).String(), nodes[0].typ.String())
   assertEqual(t, "Title Level for Node", "4", nodes[0].namedParams["level"][0].val)
 }
@@ -235,16 +237,18 @@ func TestSyntaxError(t *testing.T) {
   doc := "Some line\n==== Malformed title===\n\nAnother Block"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 5, len(p))
+  fmt.Println(p)
+  assertEqual(t, "Node count", 4, len(p))
 
 }
 
 func TestSyntaxError2(t *testing.T) {
   fmt.Println("HAHA")
-  doc := "Some line\n==== Malformed title===\n\nAnother Block\n\n=This title is broken===\n\nEnd of block"
+  // = pipo == is actually not a broken title
+  doc := "Some line\n==== Malformed title===\n\nAnother Block\n\n== This title is broken = \n\nEnd of block"
 
   p := Parse(Tokenize(doc))
   fmt.Println(p)
-  assertEqual(t, "Node count", 6, len(p))
+  assertEqual(t, "Node count", 7, len(p))
 
 }
