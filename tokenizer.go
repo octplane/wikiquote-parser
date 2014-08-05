@@ -2,6 +2,7 @@ package wikimediaparser
 
 import (
   "fmt"
+  "github.com/golang/glog"
   "strings"
   "unicode/utf8"
 )
@@ -169,7 +170,7 @@ func lexText(l *lexer) stateFn {
 }
 
 func Tokenize(body string) tokens {
-  fmt.Println("Starting Tokenize")
+  glog.V(2).Infoln("Starting Tokenize")
   ret := make([]item, 0)
   l := lex("", body)
   go l.run()

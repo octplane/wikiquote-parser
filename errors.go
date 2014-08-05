@@ -2,6 +2,7 @@ package wikimediaparser
 
 import (
   "fmt"
+  "github.com/golang/glog"
   "math"
 )
 
@@ -107,12 +108,12 @@ func (me inspectable) handleError(parentRL reportLevel) reportLevel {
   if me.behavior == ignoreSectionBehavior {
     rl = noReport
   } else {
-    me.parser.logger.Printf("parentrl : %s, message: %s", parentRL.String(), me.message)
+    glog.V(2).Infof("parentrl : %s, message: %s", parentRL.String(), me.message)
   }
   _, ok := me.err.(inspectable)
   if !ok && rl == report {
     if me.err != nil {
-      me.parser.logger.Printf("Original error was: %+v", me.err)
+      glog.V(2).Infof("Original error was: %+v", me.err)
     }
     me.dumpStream()
   }
@@ -120,7 +121,7 @@ func (me inspectable) handleError(parentRL reportLevel) reportLevel {
 }
 
 func (me *inspectable) dumpStream() {
-  me.parser.logger.Println("Inspecting stack during known Exception")
+  glog.V(2).Infoln("Inspecting stack during known Exception")
   // rewind in stream
   // TOKENSTOKENS
   //   ˆ
@@ -160,19 +161,19 @@ func outOfBoundsPanic(p *parser, s int) {
 func (p *parser) syntaxEError(err interface{}, pos int, format string, params ...interface{}) {
   delta := 4
   p.pos = int(math.Max(0, float64(pos-delta)))
-  p.logger.Printf("Syntax error at %q (%d):", p.items[pos].String(), p.pos)
-  p.logger.Printf(format, params...)
+  glog.V(2).Infof("Syntax error at %q (%d):", p.items[pos].String(), p.pos)
+  glog.V(2).Infof(format, params...)
   p.inspectHilight(delta*2, delta)
   panic(err)
 }
 
 func (p *parser) inspectHilight(ahead int, hi int) {
-  p.logger.Printf("Error Context:\n")
+  glog.V(2).Infof("Error Context:\n")
   prefix := " "
   line := "\""
 
   if p.pos > len(p.items) {
-    p.logger.Printf("Cannot inspect from here: at end of stream (pos=%d)", p.pos)
+    glog.V(2).Infof("Cannot inspect from here: at end of stream (pos=%d)", p.pos)
   } else {
     for pos, content := range p.items[p.pos:] {
       if pos > ahead {
@@ -186,8 +187,8 @@ func (p *parser) inspectHilight(ahead int, hi int) {
       line = line + content.String()
     }
   }
-  p.logger.Println(line + "\"")
-  p.logger.Println(prefix)
+  glog.V(2).Infoln(line + "\"")
+  glog.V(2).Infoln(prefix)
 
 }
 
@@ -215,12 +216,12 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
     case ignoreSectionBehavior:
       // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
       // and start parsing again
-      fmt.Println("Last inspectable", last_valid_inspectable)
+      glog.V(2).Infoln("Last inspectable", last_valid_inspectable)
       // Reset parser internal state
       p.pos = 0
       p.consumed = 0
       p.nextBlock()
-      fmt.Printf("Now at position %d\n", p.pos)
+      glog.V(2).Infof("Now at position %d\n", p.pos)
       ret = make([]Node, 0)
 
       ret = append(ret, Node{typ: nodeInvalid, val: fmt.Sprintf("> (ignored until %d )<", p.pos)})

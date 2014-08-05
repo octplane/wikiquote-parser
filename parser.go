@@ -2,8 +2,7 @@ package wikimediaparser
 
 import (
   "fmt"
-  "log"
-  "os"
+  "github.com/golang/glog"
 )
 
 type parser struct {
@@ -12,7 +11,6 @@ type parser struct {
   start           int
   pos             int
   consumed        int
-  logger          *log.Logger
   ignoreNextBlock bool
 }
 
@@ -23,7 +21,6 @@ func create_parser(name string, tokens []item) *parser {
     start:           0,
     pos:             0,
     consumed:        0,
-    logger:          log.New(os.Stdout, "[Parse]\t", log.LstdFlags),
     ignoreNextBlock: false,
   }
 
@@ -143,11 +140,11 @@ func (ev *envAlteration) String() string {
 
 func ParseWithEnv(title string, items []item, env envAlteration) (ret Nodes, consumed int) {
   p := create_parser(title, items)
-  fmt.Printf("%s: Creating Parser (%s)\n", title, env.String())
+  glog.V(2).Infof("%s: Creating Parser (%s)\n", title, env.String())
   ret = make([]Node, 0)
 
   ret = p.parse(env)
-  fmt.Printf("%s: Consumed %d / %d\n", title, p.consumed, len(p.items))
+  glog.V(2).Infof("%s: Consumed %d / %d\n", title, p.consumed, len(p.items))
   return ret, p.consumed
 }
 
@@ -169,12 +166,12 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
     }
   }()
 
-  fmt.Println("Exit sequence", env.String())
+  glog.V(2).Infof("Exit sequence: %s\n", env.String())
   p.pos = 0
   it := p.currentItem()
 
   for it.typ != tokenEOF {
-    fmt.Printf("token %s\n", it.String())
+    glog.V(2).Infof("token %s\n", it.String())
     // If the exit Sequence match, abort immediately
     if len(env.exitSequence) > 0 {
       matching := 0
@@ -187,7 +184,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
         }
       }
       if matching == len(env.exitSequence) {
-        fmt.Println("Found exit sequence", p.items[p.pos])
+        glog.V(2).Infof("Found exit sequence: %s\n", p.items[p.pos])
         return ret
       } else {
         p.backup(matching)
@@ -208,7 +205,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
         n = p.parseTitle()
       }
     case tokenLF:
-      fmt.Println("LF")
+      glog.V(2).Info("LF")
 
       p.consume(1)
       if p.currentItem().typ == tokenEq {
@@ -218,10 +215,10 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
         n = Node{typ: nodeText, val: "\n"}
       }
     default:
-      fmt.Printf("UNK", it.String())
+      glog.V(2).Infof("UNK", it.String())
       n = Node{typ: nodeUnknown, val: it.val}
     }
-    fmt.Println("Appending", n.String())
+    glog.V(2).Infoln("Appending", n.String())
     ret = append(ret, n)
 
     it = p.currentItem()
