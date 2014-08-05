@@ -2,10 +2,11 @@ package main
 
 import (
   "bufio"
+  "flag"
   "fmt"
-  "github.com/octplane/wikiquote-parser"
+  "github.com/golang/glog"
+  . "github.com/octplane/wikiquote-parser"
   "launchpad.net/xmlpath"
-  "log"
   "os"
   "sort"
   "strings"
@@ -30,31 +31,20 @@ func (cmd *Command) ArgOrElse(key string, def string) string {
   return ret
 }
 
-type Book struct {
-  Title  string
-  Author string
-  Editor string
-  Year   string
-  Page   string
-  Isbn   string
-}
+// type Book struct {
+//   Title  string
+//   Author string
+//   Editor string
+//   Year   string
+//   Page   string
+//   Isbn   string
+// }
 
-type Quote struct {
-  Text   string
-  Author string
-  Book   Book
-}
-
-type BookQuote struct {
-  Book  Book
-  Quote Quote
-}
-
-func (bq *BookQuote) ToString() string {
-  var out string
-  out = fmt.Sprintf("Quote: \"%s\", by %s, from %s, page, %d published in %d", bq.Quote.Text, bq.Quote.Author, bq.Book.Title, bq.Book.Page, bq.Book.Year)
-  return out
-}
+// type Quote struct {
+//   Text   string
+//   Author string
+//   Book   Book
+// }
 
 // Thank you andrew https://groups.google.com/d/msg/golang-nuts/FT7cjmcL7gw/Gj4_aEsE_IsJ
 // A data structure to hold a key/value pair.
@@ -93,101 +83,117 @@ func cleanup(in string) string {
     "\n", " ", -1)
 }
 
-func BuildQuote(qCommand Command, reference Command) {
-  quote, hasQuote := qCommand.NamedArguments["citation"]
-  if !hasQuote {
-    quote = qCommand.Arguments[0]
-    hasQuote = true
-  }
+type nodeType int
 
-  author := reference.ArgOrEmpty("auteur")
-  title := reference.ArgOrEmpty("titre")
-  // page := reference.ArgOrEmpty("page")
-  // editor := reference.ArgOrEmpty("éditeur")
-  // year := reference.ArgOrEmpty("année")
-  isbn := reference.ArgOrEmpty("isbn")
+const (
+  quote = nodeType(iota)
+  source
+  unknownType
+)
 
-  if quote == "" || author == "" || title == "" || isbn == "" {
+func normalizedType(n Node) nodeType {
+  if n.Typ == NodeTemplate {
+    switch n.StringParam("name") {
+    case "citation":
+      return quote
+    case "Réf Livre":
+      return source
+    case "Réf Pub":
+      return source
+    default:
+      return unknownType
+    }
   } else {
-    if len(quote) < 130 {
-      fmt.Printf("%s\t%s\t%s\t%s\t%s\n", qCommand.PageTitle, cleanup(quote), cleanup(author), title, isbn)
-    }
-  }
-
-}
-
-func ExtractQuotes(commands []Command) {
-  var buffer *Command = nil
-  for ix, cmd := range commands {
-    if len(cmd.Cmd) > 3 && cmd.Cmd[0:4] == "réf" {
-      if buffer != nil {
-        BuildQuote(*buffer, cmd)
-      } else {
-        // fmt.Println("Found ref without quote")
-        // fmt.Println(cmd)
-      }
-      buffer = nil
-    } else if strings.Index(cmd.Cmd, "citation") == 0 {
-      buffer = &commands[ix]
-    } else {
-      // fmt.Println("Unknown command:", cmd.Cmd)
-      buffer = nil
-    }
+    return unknownType
   }
 }
 
-func ExtractStats(commands []Command) {
-  commandPopularity := make(map[string]int, 1000)
-  argsPopularity := make(map[string]map[string]int, 100)
-
-  var count int
-  var hasCommand bool
-  var aCount int
-  var hasArg bool
-
-  for _, cmd := range commands {
-    count, hasCommand = commandPopularity[cmd.Cmd]
-    if hasCommand {
-      commandPopularity[cmd.Cmd] = count + 1
-    } else {
-      commandPopularity[cmd.Cmd] = 1
-      argsPopularity[cmd.Cmd] = make(map[string]int, 100)
-    }
-
-    for k := range cmd.NamedArguments {
-      aCount, hasArg = argsPopularity[cmd.Cmd][k]
-      if hasArg {
-        argsPopularity[cmd.Cmd][k] = aCount + 1
-      } else {
-        argsPopularity[cmd.Cmd][k] = 1
-      }
-    }
-  }
-
-  var maxArgsOcc int
-  for _, pl := range sortMapByValue(commandPopularity) {
-    fmt.Printf("### %s (%d occ.)\n", pl.Key, pl.Value)
-    total := pl.Value
-    maxArgsOcc = 0
-    for _, ar := range sortMapByValue(argsPopularity[pl.Key]) {
-      if ar.Value > maxArgsOcc {
-        maxArgsOcc = ar.Value
-      }
-      if ar.Value > maxArgsOcc/10 && 100*ar.Value/total > 1 {
-        fmt.Printf("- %s (%d%%)\n", ar.Key, 100*ar.Value/total)
-      }
-    }
-  }
+type Quote struct {
+  source *Node
+  quote  *Node
 }
+
+func (q *Quote) nonEmpty() bool {
+  return q.source != nil && q.quote != nil
+}
+
+func ExtractQuotes(nodes Nodes) {
+  var q Quote
+  count := 0
+
+  for _, node := range nodes {
+    switch normalizedType(node) {
+    case quote:
+      q.quote = &node
+    case source:
+      q.source = &node
+    }
+    if q.nonEmpty() {
+      count += 1
+      q = Quote{}
+    }
+  }
+  fmt.Printf("Found %d quotes\n", count)
+}
+
+// func ExtractStats(nodes wikimediaparser.Nodes) {
+//   commandPopularity := make(map[string]int, 1000)
+//   argsPopularity := make(map[string]map[string]int, 100)
+
+//   var count int
+//   var hasCommand bool
+//   var aCount int
+//   var hasArg bool
+
+//   for _, cmd := range nodes {
+//     if cmd.Typ == wikimediaparser.NodeTemplate {
+
+//     }
+
+//     count, hasCommand = commandPopularity[cmd.Cmd]
+//     if hasCommand {
+//       commandPopularity[cmd.Cmd] = count + 1
+//     } else {
+//       commandPopularity[cmd.Cmd] = 1
+//       argsPopularity[cmd.Cmd] = make(map[string]int, 100)
+//     }
+
+//     for k := range cmd.NamedArguments {
+//       aCount, hasArg = argsPopularity[cmd.Cmd][k]
+//       if hasArg {
+//         argsPopularity[cmd.Cmd][k] = aCount + 1
+//       } else {
+//         argsPopularity[cmd.Cmd][k] = 1
+//       }
+//     }
+//   }
+
+//   var maxArgsOcc int
+//   for _, pl := range sortMapByValue(commandPopularity) {
+//     fmt.Printf("### %s (%d occ.)\n", pl.Key, pl.Value)
+//     total := pl.Value
+//     maxArgsOcc = 0
+//     for _, ar := range sortMapByValue(argsPopularity[pl.Key]) {
+//       if ar.Value > maxArgsOcc {
+//         maxArgsOcc = ar.Value
+//       }
+//       if ar.Value > maxArgsOcc/10 && 100*ar.Value/total > 1 {
+//         fmt.Printf("- %s (%d%%)\n", ar.Key, 100*ar.Value/total)
+//       }
+//     }
+//   }
+// }
 
 func main() {
+  flag.Parse()
   pageXPath := xmlpath.MustCompile("/mediawiki/page")
   textXPath := xmlpath.MustCompile(("revision/text"))
   titleXPath := xmlpath.MustCompile("title")
 
   //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  fi, err := os.Open("sample2.xml")
-  // fi, err := os.Open("sample1.xml")
+  fi, err := os.Open("sample3.xml")
+  //fi, err := os.Open("sample2.xml")
+  //fi, err := os.Open("sample1.xml")
 
   if err != nil {
 
@@ -204,7 +210,7 @@ func main() {
 
   root, err := xmlpath.Parse(r)
   if err != nil {
-    log.Fatal(err)
+    glog.Fatal(err)
   }
   iter := pageXPath.Iter(root)
   for iter.Next() {
@@ -212,7 +218,10 @@ func main() {
     content, _ := textXPath.String(page)
     title, _ := titleXPath.String(page)
     fmt.Println(title)
-    tokens := wikimediaparser.Tokenize(content)
-    fmt.Println(wikimediaparser.Parse(tokens))
+    fmt.Println(content)
+    fmt.Println(Tokenize(content))
+
+    // tokens := Tokenize(content)
+    // ExtractQuotes(Parse(tokens))
   }
 }

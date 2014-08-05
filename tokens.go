@@ -5,8 +5,8 @@ import (
 )
 
 type item struct {
-  typ token
-  val string
+  Typ token
+  Val string
 }
 
 type token int
@@ -51,12 +51,12 @@ func init() {
 }
 
 func (i item) String() string {
-  desc := i.typ.String()
-  switch i.typ {
+  desc := i.Typ.String()
+  switch i.Typ {
   case tokenEOF:
     return "E"
   case itemError:
-    return i.val
+    return i.Val
   case templateStart:
     return fmt.Sprintf("%s", desc)
   case templateEnd:
@@ -66,20 +66,20 @@ func (i item) String() string {
   case linkEnd:
     return fmt.Sprintf("%s", desc)
   case itemText:
-    if len(i.val) > 40 {
-      return fmt.Sprintf("%s[...]%s", i.val[:17], i.val[len(i.val)-17:])
+    if len(i.Val) > 40 {
+      return fmt.Sprintf("%s[...]%s", i.Val[:17], i.Val[len(i.Val)-17:])
     }
-    return i.val
+    return i.Val
   case tokenLF:
     return "\\n"
   case itemPipe:
     return fmt.Sprintf("%s", desc)
   case controlStruct:
-    return fmt.Sprintf("%s %s", desc, i.val)
+    return fmt.Sprintf("%s %s", desc, i.Val)
   case tokenEq:
     return "="
   default:
-    return fmt.Sprintf("%s %s", desc, i.val)
+    return fmt.Sprintf("%s %s", desc, i.Val)
   }
 }
 

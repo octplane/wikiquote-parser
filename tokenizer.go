@@ -180,7 +180,7 @@ func Tokenize(body string) tokens {
   for !halt {
     it = l.nextItem()
     ret = append(ret, it)
-    switch it.typ {
+    switch it.Typ {
     case tokenEOF:
       halt = true
       break

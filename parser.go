@@ -29,7 +29,7 @@ func create_parser(name string, tokens []item) *parser {
 
 func (p *parser) currentItem() item {
   if p.pos > len(p.items)-1 {
-    return item{typ: tokenEOF}
+    return item{Typ: tokenEOF}
   }
 
   return p.items[p.pos]
@@ -56,40 +56,40 @@ func (p *parser) eatUntil(types ...token) {
   exp := make([]string, 0)
 
   for _, typ := range types {
-    if it.typ == token(typ) {
+    if it.Typ == token(typ) {
       return
     }
     exp = append(exp, token(typ).String())
   }
-  panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.val, exp, it.typ.String()))
+  panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.Val, exp, it.Typ.String()))
 }
 
 func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
   cont := true
   for cont {
     elt := p.currentItem()
-    switch elt.typ {
+    switch elt.Typ {
     case stop:
       return
     case itemPipe:
       p.consume(1)
     case itemText:
       p.consume(1)
-      if p.currentItem().typ == tokenEq {
-        k := elt.val
+      if p.currentItem().Typ == tokenEq {
+        k := elt.Val
         p.consume(1)
         params, consumed := ParseWithEnv(fmt.Sprintf("%s::Param for %s", p.name, k), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
-        node.namedParams[k] = params
+        node.NamedParams[k] = params
         p.consume(consumed)
       } else {
         p.backup(1)
         params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous parameter", p.name), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
-        node.params = append(node.params, params)
+        node.Params = append(node.Params, params)
         p.consume(consumed)
       }
     default:
       params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous Complex parameter", p.name), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
-      node.params = append(node.params, params)
+      node.Params = append(node.Params, params)
       p.consume(consumed)
     }
   }
@@ -98,9 +98,9 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
 // Start at next double LF
 func (p *parser) nextBlock() {
   for p.pos < len(p.items) {
-    if p.currentItem().typ == tokenLF {
+    if p.currentItem().Typ == tokenLF {
       p.consume(1)
-      if p.currentItem().typ == tokenLF {
+      if p.currentItem().Typ == tokenLF {
         p.consume(1)
         return
       }
@@ -170,13 +170,13 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
   p.pos = 0
   it := p.currentItem()
 
-  for it.typ != tokenEOF {
+  for it.Typ != tokenEOF {
     glog.V(2).Infof("token %s\n", it.String())
     // If the exit Sequence match, abort immediately
     if len(env.exitSequence) > 0 {
       matching := 0
       for _, ty := range env.exitSequence {
-        if p.currentItem().typ == ty {
+        if p.currentItem().Typ == ty {
           matching += 1
           p.consume(1)
         } else {
@@ -191,16 +191,16 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       }
     }
 
-    var n Node = Node{typ: nodeInvalid}
-    switch it.typ {
+    var n Node = Node{Typ: NodeInvalid}
+    switch it.Typ {
     case itemText:
-      n = Node{typ: nodeText, val: it.val}
+      n = Node{Typ: NodeText, Val: it.Val}
     case linkStart:
       n = p.ParseLink()
     case templateStart:
       n = p.ParseTemplate()
     case tokenEq:
-      n = Node{typ: nodeText, val: "="}
+      n = Node{Typ: NodeText, Val: "="}
       if p.pos == 0 {
         n = p.parseTitle()
       }
@@ -208,22 +208,22 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       glog.V(2).Info("LF")
 
       p.consume(1)
-      if p.currentItem().typ == tokenEq {
+      if p.currentItem().Typ == tokenEq {
         n = p.parseTitle()
       } else {
         p.backup(1)
-        n = Node{typ: nodeText, val: "\n"}
+        n = Node{Typ: NodeText, Val: "\n"}
       }
     default:
       glog.V(2).Infof("UNK", it.String())
-      n = Node{typ: nodeUnknown, val: it.val}
+      n = Node{Typ: NodeUnknown, Val: it.Val}
     }
     glog.V(2).Infoln("Appending", n.String())
     ret = append(ret, n)
 
     it = p.currentItem()
     for _, typ := range env.exitTypes {
-      if it.typ == token(typ) {
+      if it.Typ == token(typ) {
         return ret
       }
     }
@@ -233,7 +233,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
 
   }
 
-  if (len(env.exitSequence) > 0 || len(env.exitTypes) > 0) && p.currentItem().typ == tokenEOF {
+  if (len(env.exitSequence) > 0 || len(env.exitTypes) > 0) && p.currentItem().Typ == tokenEOF {
     outOfBoundsPanic(p, len(p.items))
   }
 

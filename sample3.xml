@@ -1,0 +1,47 @@
+ <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.8/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mediawiki.org/xml/export-0.8/ http://www.mediawiki.org/xml/export-0.8.xsd" version="0.8" xml:lang="fr">
+  <page>
+    <title>Modèle:Attention</title>
+    <ns>10</ns>
+    <id>3037</id>
+    <revision>
+      <id>163265</id>
+      <parentid>70915</parentid>
+      <timestamp>2012-07-31T20:41:12Z</timestamp>
+      <contributor>
+        <username>MerlIwBot</username>
+        <id>10621</id>
+      </contributor>
+      <minor />
+      <comment>robot Ajoute : [[fa:الگو:احتیاط/توضیحات]]</comment>
+      <text xml:space="preserve">&lt;includeonly&gt;{{ #ifeq: oui | {{{Avec_fond|}}} | &lt;table class=&quot;alerte&quot; style=&quot;background:{{{couleurFond|#FFE4E1}}};&quot;&gt;&lt;tr valign=&quot;middle&quot;&gt;&lt;td&gt;[[Image:Nuvola apps important.svg|30px]]&amp;nbsp;&lt;/td&gt;&lt;td&gt;{{{1}}}&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt; | [[Image:Nuvola apps important.svg|30px]]&amp;nbsp;{{{1}}} }}&lt;/includeonly&gt;&lt;noinclude&gt;
+{{Documentation modèle}}
+{{entête tableau charte alignement|center}}
+! syntaxe
+! rendu
+|-----
+|&lt;pre&gt;&lt;nowiki&gt;{{Attention}}&lt;/nowiki&gt;&lt;/pre&gt;
+|{{Attention}}
+|-----
+|&lt;pre&gt;&lt;nowiki&gt;{{Attention|Texte à afficher|}}&lt;/nowiki&gt;&lt;/pre&gt;
+|{{Attention|Texte à afficher}}
+|-----
+| &lt;pre&gt;&lt;nowiki&gt;{{Attention|Avec_fond = oui|Texte à afficher|}}&lt;/nowiki&gt;&lt;/pre&gt;
+| {{Attention|Avec_fond = oui|Texte à afficher|}}
+|-----
+| &lt;pre&gt;&lt;nowiki&gt;{{Attention|Avec_fond = oui|couleurFond = yellow|Texte à afficher|}}&lt;/nowiki&gt;&lt;/pre&gt;
+| {{Attention|Avec_fond = oui|couleurFond = yellow|Texte à afficher|}}
+|}
+
+{{Attention|Ce modèle ne doit pas être utilisé comme un [[wikt:spoiler|spoiler]]. 
+
+{{Modèle utilisant les ParserFunctions}}
+[[Catégorie:Modèle d'avertissement permanent|{{PAGENAME}}]]
+[[fa:الگو:احتیاط/توضیحات]]
+[[zh:Template:Attention]]
+&lt;/noinclude&gt;</text>
+      <sha1>936255p91h5l1vjnbganoe5s19z5r7a</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+</mediawiki>

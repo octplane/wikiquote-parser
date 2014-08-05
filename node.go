@@ -10,23 +10,23 @@ import (
 //    - a list of named parameters which are actually Node Lists
 //    -a list of anonymous parameters, a Node list again
 type Node struct {
-  typ         nodeType
-  val         string
-  namedParams map[string]Nodes
-  params      []Nodes
+  Typ         nodeType
+  Val         string
+  NamedParams map[string]Nodes
+  Params      []Nodes
 }
 
 func (n *Node) String() string {
-  switch n.typ {
-  case nodeText, nodeInvalid:
-    return fmt.Sprintf("%q", n.val)
+  switch n.Typ {
+  case NodeText, NodeInvalid:
+    return fmt.Sprintf("%q", n.Val)
   }
-  o := fmt.Sprintf("Node: %s\n", n.typ.String())
-  for ix, p := range n.params {
+  o := fmt.Sprintf("Node: %s\n", n.Typ.String())
+  for ix, p := range n.Params {
     o += fmt.Sprintf("\t%d : %s\n", ix, p.String())
   }
 
-  for k, v := range n.namedParams {
+  for k, v := range n.NamedParams {
     o += fmt.Sprintf("\t%s : %s\n", k, v.String())
   }
   return o
@@ -34,36 +34,36 @@ func (n *Node) String() string {
 
 // StringParam  returns the string value of a given named parameter
 func (n *Node) StringParam(k string) string {
-  return n.namedParams[k][0].val
+  return n.NamedParams[k][0].Val
 }
 
 type nodeType int
 
 const (
-  nodeInvalid = nodeType(iota)
-  nodeText
-  nodeTitle
-  nodeLink
-  nodeTemplate
-  nodeEq
-  nodeUnknown
+  NodeInvalid = nodeType(iota)
+  NodeText
+  NodeTitle
+  NodeLink
+  NodeTemplate
+  NodeEq
+  NodeUnknown
 )
 
 func (n nodeType) String() string {
   switch n {
-  case nodeText:
+  case NodeText:
     return "Text"
-  case nodeLink:
+  case NodeLink:
     return "Link"
-  case nodeTemplate:
+  case NodeTemplate:
     return "Template"
-  case nodeEq:
+  case NodeEq:
     return " EQ "
-  case nodeTitle:
+  case NodeTitle:
     return " Title "
-  case nodeUnknown:
+  case NodeUnknown:
     return " UNK "
-  case nodeInvalid:
+  case NodeInvalid:
     return " INV "
   default:
     return "????"

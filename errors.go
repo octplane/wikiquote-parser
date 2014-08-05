@@ -224,7 +224,7 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
       glog.V(2).Infof("Now at position %d\n", p.pos)
       ret = make([]Node, 0)
 
-      ret = append(ret, Node{typ: nodeInvalid, val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
+      ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
       return ret
     }
   default:
