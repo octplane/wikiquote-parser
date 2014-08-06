@@ -48,14 +48,14 @@ func TestEqual(t *testing.T) {
 func TestTitle(t *testing.T) {
   text := "Bar baz baz"
   nodes := Parse(Tokenize(fmt.Sprintf("====%s====\n", text)))
-  assertEqual(t, "type for Node", nodeType(nodeTitle).String(), nodes[0].Typ.String())
-  assertEqual(t, "Title Level for Node", "4", nodes[0].namedParams["level"][0].Val)
+  assertEqual(t, "type for Node", nodeType(NodeTitle).String(), nodes[0].Typ.String())
+  assertEqual(t, "Title Level for Node", "4", nodes[0].NamedParams["level"][0].Val)
 }
 
 func TestTitle2(t *testing.T) {
   nodes := Parse(Tokenize("====Titre 4====\n===Titre 3===\n"))
-  assertEqual(t, "type for Node", nodeType(nodeTitle).String(), nodes[0].Typ.String())
-  assertEqual(t, "Title Level for Node", "3", nodes[1].namedParams["level"][0].Val)
+  assertEqual(t, "type for Node", nodeType(NodeTitle).String(), nodes[0].Typ.String())
+  assertEqual(t, "Title Level for Node", "3", nodes[1].NamedParams["level"][0].Val)
 }
 
 func TestLinkParser(t *testing.T) {
@@ -64,9 +64,9 @@ func TestLinkParser(t *testing.T) {
   tree := Parse(Tokenize(fmt.Sprintf("[[%s|%s]]", lnk, text)))
 
   assertEqual(t, "Node count", 1, len(tree))
-  assertEqual(t, "Node type", nodeType(nodeLink).String(), tree[0].Typ.String())
+  assertEqual(t, "Node type", nodeType(NodeLink).String(), tree[0].Typ.String())
   assertEqual(t, "Link", lnk, tree[0].StringParam("link"))
-  assertEqual(t, "Text link", text, tree[0].params[0][0].Val)
+  assertEqual(t, "Text link", text, tree[0].Params[0][0].Val)
 }
 
 func TestTokenize(t *testing.T) {
@@ -113,7 +113,7 @@ func TestTemplate(t *testing.T) {
     t.Errorf("Unexpected node count, expected 1 node, got %d nodes.", len(tree))
   }
 
-  if tree[0].Typ != nodeTemplate {
+  if tree[0].Typ != NodeTemplate {
     t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].Typ.String())
   }
   if tree[0].StringParam("name") != temp {
@@ -130,13 +130,13 @@ func TestTemplate2(t *testing.T) {
     t.Errorf("Unexpected node count, expected 1 node, got %d nodes.", len(tree))
   }
 
-  if tree[0].Typ != nodeTemplate {
+  if tree[0].Typ != NodeTemplate {
     t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].Typ.String())
   }
   if tree[0].StringParam("name") != temp {
     t.Errorf("Unexpected name, expected name to %q, got %q", temp, tree[0].StringParam("name"))
   }
-  if tree[0].params[0][0].Val != txt {
+  if tree[0].Params[0][0].Val != txt {
     t.Errorf("Unexpected value to %q, got %q", txt, tree[0].Val)
   }
 }
@@ -151,7 +151,7 @@ func TestTemplate3(t *testing.T) {
     t.Errorf("Unexpected node count, expected 1 node, got %d nodes.", len(tree))
   }
 
-  if tree[0].Typ != nodeTemplate {
+  if tree[0].Typ != NodeTemplate {
     t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].Typ.String())
   }
   if tree[0].StringParam("name") != temp {
@@ -178,7 +178,7 @@ func TestTemplate4(t *testing.T) {
     t.Errorf("Unexpected node count, expected 1 node, got %d nodes.", len(tree))
   }
 
-  if tree[0].Typ != nodeTemplate {
+  if tree[0].Typ != NodeTemplate {
     t.Errorf("Unexpected node type, expected nodeLink, got %q.", tree[0].Typ.String())
   }
   if tree[0].StringParam("name") != temp {
@@ -188,8 +188,8 @@ func TestTemplate4(t *testing.T) {
     t.Errorf("Unexpected citation namedParams: wanted %q, got %q", txt, tree[0].StringParam("citation"))
   }
 
-  if tree[0].namedParams["author"][0].namedParams["link"][0].Val != aut {
-    t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].namedParams["author"][1].namedParams["link"][0].Val)
+  if tree[0].NamedParams["author"][0].NamedParams["link"][0].Val != aut {
+    t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].NamedParams["author"][1].NamedParams["link"][0].Val)
   }
 }
 
@@ -198,8 +198,8 @@ func TestComplexTemplate(t *testing.T) {
   txt := fmt.Sprintf("{{Citation|%s|thumb|author=Nobody}}", match)
   tree := Parse(Tokenize(txt))
 
-  if tree[0].params[0][0].Val != match {
-    t.Errorf("Invalid parameter, got %q, expected %q", match, tree[0].params[0][0].Val)
+  if tree[0].Params[0][0].Val != match {
+    t.Errorf("Invalid parameter, got %q, expected %q", match, tree[0].Params[0][0].Val)
   }
 }
 
@@ -208,8 +208,8 @@ func TestComplexLink(t *testing.T) {
   txt := fmt.Sprintf("[[File:1873 Pierre Auguste Cot - Spring.jpg|thumb|upright=1.8|%s]]", linkText)
 
   tree := Parse(Tokenize(txt))
-  if tree[0].params[1][0].Val != linkText {
-    t.Errorf("Invalid parameter, got %q, expected %q", linkText, tree[0].params[1][0].Val)
+  if tree[0].Params[1][0].Val != linkText {
+    t.Errorf("Invalid parameter, got %q, expected %q", linkText, tree[0].Params[1][0].Val)
   }
 
 }
