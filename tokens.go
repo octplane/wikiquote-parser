@@ -13,6 +13,8 @@ type token int
 
 const (
   itemError = token(iota)
+  placeholderStart
+  placeholderEnd
   templateName
   templateStart
   templateEnd
@@ -30,6 +32,8 @@ const (
 // https://en.wikipedia.org/wiki/Help:Cheatsheet
 const leftTemplate = "{{"
 const rightTemplate = "}}"
+const leftPlaceholder = "{{{"
+const rightPlaceholder = "}}}"
 const leftLink = "[["
 const rightLink = "]]"
 const pipe = "|"
@@ -37,16 +41,30 @@ const eq = "="
 const lf = "\n"
 
 var strToToken map[string]token
+var tokensAsString []string
 
 func init() {
   strToToken = map[string]token{
-    leftTemplate:  templateStart,
-    rightTemplate: templateEnd,
-    leftLink:      linkStart,
-    rightLink:     linkEnd,
-    pipe:          itemPipe,
-    eq:            tokenEq,
-    lf:            tokenLF,
+    leftPlaceholder:  placeholderStart,
+    leftTemplate:     templateStart,
+    rightPlaceholder: placeholderEnd,
+    rightTemplate:    templateEnd,
+    leftLink:         linkStart,
+    rightLink:        linkEnd,
+    pipe:             itemPipe,
+    eq:               tokenEq,
+    lf:               tokenLF,
+  }
+  tokensAsString = []string{
+    leftPlaceholder,
+    leftTemplate,
+    rightPlaceholder,
+    rightTemplate,
+    leftLink,
+    rightLink,
+    pipe,
+    eq,
+    lf,
   }
 }
 
@@ -57,13 +75,7 @@ func (i item) String() string {
     return "E"
   case itemError:
     return i.Val
-  case templateStart:
-    return fmt.Sprintf("%s", desc)
-  case templateEnd:
-    return fmt.Sprintf("%s", desc)
-  case linkStart:
-    return fmt.Sprintf("%s", desc)
-  case linkEnd:
+  case templateStart, templateEnd, linkStart, linkEnd, placeholderStart, placeholderEnd:
     return fmt.Sprintf("%s", desc)
   case itemText:
     if len(i.Val) > 40 {
@@ -97,6 +109,10 @@ func (itt token) String() string {
     return "Link start"
   case linkEnd:
     return rightLink
+  case placeholderStart:
+    return "Placeholder start"
+  case placeholderEnd:
+    return "Placeholder end"
   case itemText:
     return "Text"
   case itemPipe:

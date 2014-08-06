@@ -79,6 +79,16 @@ func TestTokenize(t *testing.T) {
   assertEqual(t, "Token", token(tokenEOF).String(), ts[2].Typ.String())
 }
 
+func TestTokenizeplaceHolder(t *testing.T) {
+  s := "|{{{"
+  ts := Tokenize(s)
+
+  assertEqual(t, "number of tokens", 3, len(ts))
+  assertEqual(t, "Token", token(itemPipe).String(), ts[0].Typ.String())
+  assertEqual(t, "Token", token(placeholderStart).String(), ts[1].Typ.String())
+  assertEqual(t, "Token", token(tokenEOF).String(), ts[2].Typ.String())
+}
+
 func TestTokenize2(t *testing.T) {
   s := "{{{{"
   ts := Tokenize(s)
@@ -87,8 +97,8 @@ func TestTokenize2(t *testing.T) {
     t.Errorf("Unexpected item count, expected 3, got %d", len(ts))
   }
 
-  if ts[1].Typ != templateStart {
-    t.Errorf("Unexpected token, got %s when wanting templateStart", ts[1].Typ.String())
+  if ts[0].Typ != placeholderStart {
+    t.Errorf("Unexpected token, got %s when wanting templateStart", ts[0].Typ.String())
   }
 }
 

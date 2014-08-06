@@ -146,7 +146,8 @@ func (l *lexer) nextItem() item {
 
 func lexText(l *lexer) stateFn {
   for {
-    for st, it := range strToToken {
+    for _, st := range tokensAsString {
+      it := strToToken[st]
       if strings.HasPrefix(l.input[l.pos:], st) {
         if l.pos > l.start {
           l.emit(itemText)
