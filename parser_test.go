@@ -221,6 +221,14 @@ func TestComplexLink(t *testing.T) {
   if tree[0].Params[1][0].Val != linkText {
     t.Errorf("Invalid parameter, got %q, expected %q", linkText, tree[0].Params[1][0].Val)
   }
+}
+
+func TestTemplateInLink(t *testing.T) {
+  linkText := "{{citation|jamais sans mon poney}}"
+  txt := fmt.Sprintf("[[File: secret service|%s]]", linkText)
+  tree := Parse(Tokenize(txt))
+
+  assertEqual(t, "citation first parameter", "jamais sans mon poney", tree[0].Params[0][0].Params[0][0].Val)
 
 }
 
@@ -254,5 +262,13 @@ func TestSyntaxError2(t *testing.T) {
 
   p := Parse(Tokenize(doc))
   assertEqual(t, "Node count", 8, len(p))
+}
 
+func TestSyntaxError3(t *testing.T) {
+  // = pipo == is actually not a broken title
+  doc := "Nice valid text\n{{Template Name|and this complex parameter will never be closed"
+
+  p := Parse(Tokenize(doc))
+  fmt.Println(p.String())
+  assertEqual(t, "Node count", 3, len(p))
 }

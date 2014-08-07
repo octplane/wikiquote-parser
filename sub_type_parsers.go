@@ -67,14 +67,13 @@ func (p *parser) ParseLink() Node {
   p.consume(consumed)
 
   p.scanSubArgumentsUntil(&ret, linkEnd)
-  // eat Link End
-  p.consume(1)
 
   return ret
 }
 
 func (p *parser) ParseTemplate() Node {
   ret := Node{Typ: NodeTemplate, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
+  glog.V(2).Infoln("Parsing a template")
 
   p.eatUntil(templateStart)
   name, consumed := ParseWithEnv(fmt.Sprintf("%s::Template", p.name), p.items[p.pos:],
@@ -83,8 +82,24 @@ func (p *parser) ParseTemplate() Node {
       forbiddenMarkup: []markup{template}})
   ret.NamedParams["name"] = name
   p.consume(consumed)
+  glog.V(2).Infof("Found template %s, now scanning sub arguments from %s", name.String(), p.items[p.pos:])
   p.scanSubArgumentsUntil(&ret, templateEnd)
-  p.consume(1)
+
+  glog.V(2).Infoln("Parsed a template")
+  return ret
+}
+
+func (p *parser) ParsePlaceholder() Node {
+  ret := Node{Typ: NodePlaceholder, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
+
+  p.eatUntil(placeholderStart)
+  name, consumed := ParseWithEnv(fmt.Sprintf("%s::Placeholder", p.name), p.items[p.pos:],
+    envAlteration{
+      exitTypes: []token{placeholderEnd},
+    })
+
+  ret.NamedParams["content"] = name
+  p.consume(consumed)
 
   return ret
 }

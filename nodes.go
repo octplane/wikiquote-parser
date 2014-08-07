@@ -7,7 +7,7 @@ func (ns Nodes) String() string {
   output := "["
   for _, node := range ns {
     if node.Val != "\"\"" {
-      output += "::" + node.Val
+      output += "::" + node.String()
     }
   }
   output += "]"

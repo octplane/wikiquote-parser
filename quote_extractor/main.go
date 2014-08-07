@@ -218,10 +218,8 @@ func main() {
     content, _ := textXPath.String(page)
     title, _ := titleXPath.String(page)
     fmt.Println(title)
-    fmt.Println(content)
-    fmt.Println(Tokenize(content))
 
-    // tokens := Tokenize(content)
-    // ExtractQuotes(Parse(tokens))
+    tokens := Tokenize(content)
+    ExtractQuotes(Parse(tokens))
   }
 }

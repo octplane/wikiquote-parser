@@ -21,13 +21,13 @@ func (n *Node) String() string {
   case NodeText, NodeInvalid:
     return fmt.Sprintf("%q", n.Val)
   }
-  o := fmt.Sprintf("Node: %s\n", n.Typ.String())
+  o := fmt.Sprintf("%s: %s", n.Typ.String(), n.Val)
   for ix, p := range n.Params {
-    o += fmt.Sprintf("\t%d : %s\n", ix, p.String())
+    o += fmt.Sprintf("\t%d: %s\n", ix, p.String())
   }
 
   for k, v := range n.NamedParams {
-    o += fmt.Sprintf("\t%s : %s\n", k, v.String())
+    o += fmt.Sprintf("\t%s: %s\n", k, v.String())
   }
   return o
 }
@@ -45,6 +45,7 @@ const (
   NodeTitle
   NodeLink
   NodeTemplate
+  NodePlaceholder
   NodeEq
   NodeUnknown
 )
@@ -61,8 +62,10 @@ func (n nodeType) String() string {
     return " EQ "
   case NodeTitle:
     return " Title "
+  case NodePlaceholder:
+    return " Placeholder "
   case NodeUnknown:
-    return " UNK "
+    return "UNK"
   case NodeInvalid:
     return " INV "
   default:

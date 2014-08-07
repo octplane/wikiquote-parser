@@ -149,7 +149,7 @@ func (p *parser) handleTitleError(pos int, lvl int) {
 }
 
 func outOfBoundsPanic(p *parser, s int) {
-  msg := fmt.Sprintf("Went too far, out of bounds (from %d)", s)
+  msg := fmt.Sprintf("Went too far, out of bounds (from %d : %s)", s, p.items[s:])
   myerr := inspectable{}
   p.defaultInspectable(&myerr)
   myerr.message = msg
@@ -197,7 +197,7 @@ func (p *parser) inspect(ahead int) {
 }
 
 // called by main parser or subparser when something wrong appears
-func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
+func (p *parser) handleParseError(err interface{}, env envAlteration, ret Nodes) Nodes {
   switch err.(type) {
   case inspectable:
     err.(inspectable).handle()
@@ -216,7 +216,7 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
     case ignoreSectionBehavior:
       // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
       // and start parsing again
-      glog.V(2).Infoln("Last inspectable", last_valid_inspectable)
+      glog.V(2).Infoln("Last inspectable", last_valid_inspectable, "when looking for", env.String())
       // Reset parser internal state
       p.pos = 0
       p.consumed = 0

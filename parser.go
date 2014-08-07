@@ -6,22 +6,20 @@ import (
 )
 
 type parser struct {
-  name            string
-  items           []item
-  start           int
-  pos             int
-  consumed        int
-  ignoreNextBlock bool
+  name     string
+  items    []item
+  start    int
+  pos      int
+  consumed int
 }
 
 func create_parser(name string, tokens []item) *parser {
   p := &parser{
-    name:            name,
-    items:           tokens,
-    start:           0,
-    pos:             0,
-    consumed:        0,
-    ignoreNextBlock: false,
+    name:     name,
+    items:    tokens,
+    start:    0,
+    pos:      0,
+    consumed: 0,
   }
 
   return p
@@ -65,11 +63,14 @@ func (p *parser) eatUntil(types ...token) {
 }
 
 func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
-  cont := true
-  for cont {
-    elt := p.currentItem()
+  glog.V(2).Infof("Sub-scanning until %s", stop.String())
+  elt := p.currentItem()
+  for elt.Typ != tokenEOF {
+    elt = p.currentItem()
+    glog.V(2).Infof("Element is now %s, scanning until %s\n", elt.String(), stop.String())
     switch elt.Typ {
-    case stop:
+    case stop, tokenEOF:
+      glog.V(2).Infof("Finished sub-scanning at token %s", elt.Typ.String())
       return
     case itemPipe:
       p.consume(1)
@@ -88,6 +89,7 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
         p.consume(consumed)
       }
     default:
+      fmt.Printf("Default subscanner: %s ( looking for %s)\n", elt.String(), stop.String())
       params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous Complex parameter", p.name), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
       node.Params = append(node.Params, params)
       p.consume(consumed)
@@ -97,6 +99,7 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
 
 // Start at next double LF
 func (p *parser) nextBlock() {
+  glog.V(2).Infof("Will now attempt to find next block for %s\n", p.items[p.pos:])
   for p.pos < len(p.items) {
     if p.currentItem().Typ == tokenLF {
       p.consume(1)
@@ -107,7 +110,11 @@ func (p *parser) nextBlock() {
     }
     p.consume(1)
   }
-  p.pos = len(p.items) - 1
+  if p.items[len(p.items)-1].Typ == tokenEOF {
+    p.pos = len(p.items) - 1
+  } else {
+    p.pos = len(p.items)
+  }
 }
 
 type envAlteration struct {
@@ -140,7 +147,7 @@ func (ev *envAlteration) String() string {
 
 func ParseWithEnv(title string, items []item, env envAlteration) (ret Nodes, consumed int) {
   p := create_parser(title, items)
-  glog.V(2).Infof("%s: Creating Parser (%s)\n", title, env.String())
+  glog.V(2).Infof("%s: Creating Parser (%s) with %d items\n", title, env.String(), len(items))
   ret = make([]Node, 0)
 
   ret = p.parse(env)
@@ -162,7 +169,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
 
   defer func() {
     if err := recover(); err != nil {
-      ret = p.handleParseError(err, ret)
+      ret = p.handleParseError(err, env, ret)
     }
   }()
 
@@ -191,6 +198,13 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       }
     }
 
+    it = p.currentItem()
+    for _, typ := range env.exitTypes {
+      if it.Typ == token(typ) {
+        return ret
+      }
+    }
+
     var n Node = Node{Typ: NodeInvalid}
     switch it.Typ {
     case itemText:
@@ -199,6 +213,8 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       n = p.ParseLink()
     case templateStart:
       n = p.ParseTemplate()
+    case placeholderStart:
+      n = p.ParsePlaceholder()
     case tokenEq:
       n = Node{Typ: NodeText, Val: "="}
       if p.pos == 0 {
@@ -218,15 +234,8 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       glog.V(2).Infof("UNK", it.String())
       n = Node{Typ: NodeUnknown, Val: it.Val}
     }
-    glog.V(2).Infoln("Appending", n.String())
+    glog.V(2).Infof("Appending %s (remains %s), until", n.String(), p.items[p.pos:], env.String())
     ret = append(ret, n)
-
-    it = p.currentItem()
-    for _, typ := range env.exitTypes {
-      if it.Typ == token(typ) {
-        return ret
-      }
-    }
 
     p.consume(1)
     it = p.currentItem()
