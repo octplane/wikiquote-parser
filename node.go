@@ -2,6 +2,7 @@ package wikimediaparser
 
 import (
   "fmt"
+  "strings"
 )
 
 // Node as it is emitted by the parser
@@ -21,6 +22,8 @@ func (n *Node) StringRepresentation() string {
   switch n.Typ {
   case NodeText, NodeInvalid:
     return n.Val
+  case NodeLink:
+    return n.StringParamOrEmpty("link")
   default:
     return ""
   }
@@ -50,10 +53,11 @@ func (n *Node) StringParam(k string) string {
 func (n *Node) StringParamOrEmpty(k string) string {
   v, ok := n.NamedParams[k]
   if ok {
-    if len(v) > 0 {
-      v2 := v[0]
-      return v2.Val
+    ret := v.StringRepresentation()
+    if strings.HasPrefix(ret, "\n") {
+      return ret[1:]
     }
+    return ret
   }
   return ""
 }

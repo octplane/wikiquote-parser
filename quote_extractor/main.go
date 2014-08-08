@@ -7,6 +7,7 @@ import (
   "github.com/golang/glog"
   . "github.com/octplane/wikiquote-parser"
   "launchpad.net/xmlpath"
+  "math"
   "os"
   "sort"
   "strings"
@@ -94,12 +95,11 @@ const (
 func normalizedType(n Node) nodeType {
   if n.Typ == NodeTemplate {
     switch n.StringParam("name") {
-    case "citation":
+    case "citation", "Citation":
       return quote
-    case "Réf Livre":
+    case "Réf Livre", "Réf Pub", "Réf Article":
       return source
-    case "Réf Pub":
-      return source
+
     default:
       return unknownType
     }
@@ -117,21 +117,26 @@ func (q *Quote) nonEmpty() bool {
   return q.source.Typ != NodeEmpty && q.quote.Typ != NodeEmpty
 }
 
-func (q *Quote) StringRepresentation() string {
+func (q *Quote) StringRepresentation(category string) string {
 
   var quotetext string
+  var authortext string
 
   if len(q.quote.Params) == 1 {
     quotetext = q.quote.Params[0].StringRepresentation()
   } else {
-    fmt.Println("No anonymous param for this quote", q.quote.Typ.String())
     quotetext = q.quote.StringParamOrEmpty("citation")
   }
+  quotetext = quotetext[0:int(math.Min(float64(len(quotetext)), 40))]
 
-  return fmt.Sprintf("%s\t%s", quotetext, q.source.String())
+  authortext = q.source.StringParamOrEmpty("auteur")
+  title := q.source.StringParamOrEmpty("titre")
+  isbn := q.source.StringParamOrEmpty("ISBN")
+
+  return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", category, isbn, authortext, title, quotetext)
 }
 
-func ExtractQuotes(nodes Nodes) {
+func ExtractQuotes(nodes Nodes, theme string) {
   var q Quote = Quote{source: EmptyNode(), quote: EmptyNode()}
   count := 0
 
@@ -144,60 +149,12 @@ func ExtractQuotes(nodes Nodes) {
     }
     if q.nonEmpty() {
       count += 1
-      fmt.Println(q.StringRepresentation())
+      fmt.Println(q.StringRepresentation(theme))
       q = Quote{source: EmptyNode(), quote: EmptyNode()}
     }
   }
   fmt.Printf("Found %d quotes\n", count)
 }
-
-// func ExtractStats(nodes wikimediaparser.Nodes) {
-//   commandPopularity := make(map[string]int, 1000)
-//   argsPopularity := make(map[string]map[string]int, 100)
-
-//   var count int
-//   var hasCommand bool
-//   var aCount int
-//   var hasArg bool
-
-//   for _, cmd := range nodes {
-//     if cmd.Typ == wikimediaparser.NodeTemplate {
-
-//     }
-
-//     count, hasCommand = commandPopularity[cmd.Cmd]
-//     if hasCommand {
-//       commandPopularity[cmd.Cmd] = count + 1
-//     } else {
-//       commandPopularity[cmd.Cmd] = 1
-//       argsPopularity[cmd.Cmd] = make(map[string]int, 100)
-//     }
-
-//     for k := range cmd.NamedArguments {
-//       aCount, hasArg = argsPopularity[cmd.Cmd][k]
-//       if hasArg {
-//         argsPopularity[cmd.Cmd][k] = aCount + 1
-//       } else {
-//         argsPopularity[cmd.Cmd][k] = 1
-//       }
-//     }
-//   }
-
-//   var maxArgsOcc int
-//   for _, pl := range sortMapByValue(commandPopularity) {
-//     fmt.Printf("### %s (%d occ.)\n", pl.Key, pl.Value)
-//     total := pl.Value
-//     maxArgsOcc = 0
-//     for _, ar := range sortMapByValue(argsPopularity[pl.Key]) {
-//       if ar.Value > maxArgsOcc {
-//         maxArgsOcc = ar.Value
-//       }
-//       if ar.Value > maxArgsOcc/10 && 100*ar.Value/total > 1 {
-//         fmt.Printf("- %s (%d%%)\n", ar.Key, 100*ar.Value/total)
-//       }
-//     }
-//   }
-// }
 
 func main() {
   flag.Parse()
@@ -232,9 +189,8 @@ func main() {
     page := iter.Node()
     content, _ := textXPath.String(page)
     title, _ := titleXPath.String(page)
-    fmt.Println(title)
 
     tokens := Tokenize(content)
-    ExtractQuotes(Parse(tokens))
+    ExtractQuotes(Parse(tokens), title)
   }
 }
