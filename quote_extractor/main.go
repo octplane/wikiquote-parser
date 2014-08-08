@@ -109,28 +109,43 @@ func normalizedType(n Node) nodeType {
 }
 
 type Quote struct {
-  source *Node
-  quote  *Node
+  source Node
+  quote  Node
 }
 
 func (q *Quote) nonEmpty() bool {
-  return q.source != nil && q.quote != nil
+  return q.source.Typ != NodeEmpty && q.quote.Typ != NodeEmpty
+}
+
+func (q *Quote) StringRepresentation() string {
+
+  var quotetext string
+
+  if len(q.quote.Params) == 1 {
+    quotetext = q.quote.Params[0].StringRepresentation()
+  } else {
+    fmt.Println("No anonymous param for this quote", q.quote.Typ.String())
+    quotetext = q.quote.StringParamOrEmpty("citation")
+  }
+
+  return fmt.Sprintf("%s\t%s", quotetext, q.source.String())
 }
 
 func ExtractQuotes(nodes Nodes) {
-  var q Quote
+  var q Quote = Quote{source: EmptyNode(), quote: EmptyNode()}
   count := 0
 
   for _, node := range nodes {
     switch normalizedType(node) {
     case quote:
-      q.quote = &node
+      q.quote = node
     case source:
-      q.source = &node
+      q.source = node
     }
     if q.nonEmpty() {
       count += 1
-      q = Quote{}
+      fmt.Println(q.StringRepresentation())
+      q = Quote{source: EmptyNode(), quote: EmptyNode()}
     }
   }
   fmt.Printf("Found %d quotes\n", count)
@@ -191,8 +206,8 @@ func main() {
   titleXPath := xmlpath.MustCompile("title")
 
   //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  fi, err := os.Open("sample3.xml")
-  //fi, err := os.Open("sample2.xml")
+  //fi, err := os.Open("sample3.xml")
+  fi, err := os.Open("sample2.xml")
   //fi, err := os.Open("sample1.xml")
 
   if err != nil {

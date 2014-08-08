@@ -16,6 +16,16 @@ type Node struct {
   Params      []Nodes
 }
 
+// Return the Node text content, without any decoration
+func (n *Node) StringRepresentation() string {
+  switch n.Typ {
+  case NodeText, NodeInvalid:
+    return n.Val
+  default:
+    return ""
+  }
+}
+
 func (n *Node) String() string {
   switch n.Typ {
   case NodeText, NodeInvalid:
@@ -37,6 +47,21 @@ func (n *Node) StringParam(k string) string {
   return n.NamedParams[k][0].Val
 }
 
+func (n *Node) StringParamOrEmpty(k string) string {
+  v, ok := n.NamedParams[k]
+  if ok {
+    if len(v) > 0 {
+      v2 := v[0]
+      return v2.Val
+    }
+  }
+  return ""
+}
+
+func EmptyNode() Node {
+  return Node{Typ: NodeEmpty}
+}
+
 type nodeType int
 
 const (
@@ -48,6 +73,7 @@ const (
   NodePlaceholder
   NodeEq
   NodeUnknown
+  NodeEmpty
 )
 
 func (n nodeType) String() string {

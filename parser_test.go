@@ -269,6 +269,5 @@ func TestSyntaxError3(t *testing.T) {
   doc := "Nice valid text\n{{Template Name|and this complex parameter will never be closed"
 
   p := Parse(Tokenize(doc))
-  fmt.Println(p.String())
   assertEqual(t, "Node count", 3, len(p))
 }

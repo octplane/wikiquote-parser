@@ -89,7 +89,6 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
         p.consume(consumed)
       }
     default:
-      fmt.Printf("Default subscanner: %s ( looking for %s)\n", elt.String(), stop.String())
       params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous Complex parameter", p.name), p.items[p.pos:], envAlteration{exitTypes: []token{itemPipe, stop}})
       node.Params = append(node.Params, params)
       p.consume(consumed)
