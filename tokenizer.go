@@ -171,7 +171,7 @@ func lexText(l *lexer) stateFn {
 }
 
 func Tokenize(body string) tokens {
-  glog.V(2).Infoln("Starting Tokenize")
+  glog.V(2).Infoln("************* Starting Tokenization *************")
   ret := make([]item, 0)
   l := lex("", body)
   go l.run()

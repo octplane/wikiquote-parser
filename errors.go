@@ -9,8 +9,9 @@ import (
 type behaviorOnError int
 
 const (
-  abortBehavior = iota
+  abortBehavior = behaviorOnError(iota)
   ignoreSectionBehavior
+  ignoreLineBehavior
 )
 
 func (be behaviorOnError) String() string {
@@ -56,7 +57,7 @@ func (p *parser) defaultInspectable(i *inspectable) {
   i.parser = p
   i.pos = p.pos
   i.delta = 8
-  i.behavior = abortBehavior
+  i.behavior = p.env.onError
   i.class = RuntimeException
 }
 
@@ -153,7 +154,7 @@ func outOfBoundsPanic(p *parser, s int) {
   myerr := inspectable{}
   p.defaultInspectable(&myerr)
   myerr.message = msg
-  myerr.behavior = ignoreSectionBehavior
+  myerr.behavior = ignoreSectionBehavior // p.env.onError
   myerr.class = EOFException
   panic(myerr)
 }
@@ -197,7 +198,7 @@ func (p *parser) inspect(ahead int) {
 }
 
 // called by main parser or subparser when something wrong appears
-func (p *parser) handleParseError(err interface{}, env envAlteration, ret Nodes) Nodes {
+func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
   switch err.(type) {
   case inspectable:
     err.(inspectable).handle()
@@ -211,12 +212,26 @@ func (p *parser) handleParseError(err interface{}, env envAlteration, ret Nodes)
       insp, ok = insp.err.(inspectable)
     }
     switch behavior {
+
     case abortBehavior:
       panic(last_valid_inspectable)
+
+    case ignoreLineBehavior:
+      glog.V(2).Infoln("ignoreLineBehavior: Last inspectable", last_valid_inspectable, "when looking for", p.env.String())
+      // Reset parser internal state
+      p.pos = 0
+      p.consumed = 0
+      p.nextLine()
+      glog.V(2).Infof("Now at position %d\n", p.pos)
+      ret = make([]Node, 0)
+
+      ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
+      return ret
+
     case ignoreSectionBehavior:
       // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
       // and start parsing again
-      glog.V(2).Infoln("Last inspectable", last_valid_inspectable, "when looking for", env.String())
+      glog.V(2).Infoln("ignoreSectionBehavior: Last inspectable", last_valid_inspectable, "when looking for", p.env.String())
       // Reset parser internal state
       p.pos = 0
       p.consumed = 0

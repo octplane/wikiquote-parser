@@ -11,15 +11,17 @@ type parser struct {
   start    int
   pos      int
   consumed int
+  env      envAlteration
 }
 
-func create_parser(name string, tokens []item) *parser {
+func create_parser(name string, tokens []item, env envAlteration) *parser {
   p := &parser{
     name:     name,
     items:    tokens,
     start:    0,
     pos:      0,
     consumed: 0,
+    env:      env,
   }
 
   return p
@@ -96,6 +98,22 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
   }
 }
 
+func (p *parser) nextLine() {
+  glog.V(2).Infof("Will now attempt to find next line for %s\n", p.items[p.pos:])
+  for p.pos < len(p.items) {
+    if p.currentItem().Typ == tokenLF {
+      p.consume(1)
+      return
+    }
+    p.consume(1)
+  }
+  if p.items[len(p.items)-1].Typ == tokenEOF {
+    p.pos = len(p.items) - 1
+  } else {
+    p.pos = len(p.items)
+  }
+}
+
 // Start at next double LF
 func (p *parser) nextBlock() {
   glog.V(2).Infof("Will now attempt to find next block for %s\n", p.items[p.pos:])
@@ -117,9 +135,9 @@ func (p *parser) nextBlock() {
 }
 
 type envAlteration struct {
-  exitTypes       []token
-  exitSequence    []token
-  forbiddenMarkup []markup
+  exitTypes    []token
+  exitSequence []token
+  onError      behaviorOnError
 }
 
 func (ev *envAlteration) String() string {
@@ -145,11 +163,11 @@ func (ev *envAlteration) String() string {
 }
 
 func ParseWithEnv(title string, items []item, env envAlteration) (ret Nodes, consumed int) {
-  p := create_parser(title, items)
+  p := create_parser(title, items, env)
   glog.V(2).Infof("%s: Creating Parser (%s) with %d items\n", title, env.String(), len(items))
   ret = make([]Node, 0)
 
-  ret = p.parse(env)
+  ret = p.parse()
   glog.V(2).Infof("%s: Consumed %d / %d\n", title, p.consumed, len(p.items))
   return ret, p.consumed
 }
@@ -163,25 +181,25 @@ func ParseWithConsumed(items []item) (ret Nodes, consumed int) {
   return ParseWithEnv("top-level", items, envAlteration{})
 }
 
-func (p *parser) parse(env envAlteration) (ret Nodes) {
+func (p *parser) parse() (ret Nodes) {
   ret = make([]Node, 0)
 
   defer func() {
     if err := recover(); err != nil {
-      ret = p.handleParseError(err, env, ret)
+      ret = p.handleParseError(err, ret)
     }
   }()
 
-  glog.V(2).Infof("Exit sequence: %s\n", env.String())
+  glog.V(2).Infof("Exit sequence: %s\n", p.env.String())
   p.pos = 0
   it := p.currentItem()
 
   for it.Typ != tokenEOF {
     glog.V(2).Infof("token %s\n", it.String())
     // If the exit Sequence match, abort immediately
-    if len(env.exitSequence) > 0 {
+    if len(p.env.exitSequence) > 0 {
       matching := 0
-      for _, ty := range env.exitSequence {
+      for _, ty := range p.env.exitSequence {
         if p.currentItem().Typ == ty {
           matching += 1
           p.consume(1)
@@ -189,7 +207,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
           break
         }
       }
-      if matching == len(env.exitSequence) {
+      if matching == len(p.env.exitSequence) {
         glog.V(2).Infof("Found exit sequence: %s\n", p.items[p.pos])
         return ret
       } else {
@@ -198,7 +216,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
     }
 
     it = p.currentItem()
-    for _, typ := range env.exitTypes {
+    for _, typ := range p.env.exitTypes {
       if it.Typ == token(typ) {
         return ret
       }
@@ -233,7 +251,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
       glog.V(2).Infof("UNK", it.String())
       n = Node{Typ: NodeUnknown, Val: it.Val}
     }
-    glog.V(2).Infof("Appending %s (remains %s), until", n.String(), p.items[p.pos:], env.String())
+    glog.V(2).Infof("Appending %s (remains %s), until", n.String(), p.items[p.pos:], p.env.String())
     ret = append(ret, n)
 
     p.consume(1)
@@ -241,7 +259,7 @@ func (p *parser) parse(env envAlteration) (ret Nodes) {
 
   }
 
-  if (len(env.exitSequence) > 0 || len(env.exitTypes) > 0) && p.currentItem().Typ == tokenEOF {
+  if (len(p.env.exitSequence) > 0 || len(p.env.exitTypes) > 0) && p.currentItem().Typ == tokenEOF {
     outOfBoundsPanic(p, len(p.items))
   }
 

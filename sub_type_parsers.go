@@ -39,8 +39,9 @@ func (p *parser) parseTitle() (ret Node) {
   content, consumed := ParseWithEnv(fmt.Sprintf("%s::Title(%d)", p.name, level),
     p.items[p.pos:],
     envAlteration{
-      exitSequence:    exitSequence,
-      forbiddenMarkup: []markup{title}})
+      exitSequence: exitSequence,
+      onError:      ignoreLineBehavior,
+    })
   ret.NamedParams["title"] = content
   // Only one invalid node in return, insert instead of element here
   if len(content) == 1 && content[0].Typ == NodeInvalid {
@@ -61,8 +62,8 @@ func (p *parser) ParseLink() Node {
   p.eatUntil(linkStart)
   linkObject, consumed := ParseWithEnv(fmt.Sprintf("%s::Link", p.name), p.items[p.pos:],
     envAlteration{
-      exitTypes:       []token{itemPipe, linkEnd},
-      forbiddenMarkup: []markup{link}})
+      exitTypes: []token{itemPipe, linkEnd},
+    })
   ret.NamedParams["link"] = linkObject
   p.consume(consumed)
 
@@ -78,8 +79,8 @@ func (p *parser) ParseTemplate() Node {
   p.eatUntil(templateStart)
   name, consumed := ParseWithEnv(fmt.Sprintf("%s::Template", p.name), p.items[p.pos:],
     envAlteration{
-      exitTypes:       []token{itemPipe, templateEnd},
-      forbiddenMarkup: []markup{template}})
+      exitTypes: []token{itemPipe, templateEnd},
+    })
   ret.NamedParams["name"] = name
   p.consume(consumed)
   glog.V(2).Infof("Found template %s, now scanning sub arguments from %s", name.String(), p.items[p.pos:])

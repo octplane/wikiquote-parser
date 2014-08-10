@@ -235,7 +235,7 @@ func TestTemplateInLink(t *testing.T) {
 func TestNextBlockParser(t *testing.T) {
   txt := "this is some text\n\nthis is another block\n"
   toks := Tokenize(txt)
-  parser := create_parser("top", toks)
+  parser := create_parser("top", toks, envAlteration{})
   parser.nextBlock()
   assertEqual(t, "Next block position", 3, parser.pos)
 }
@@ -243,7 +243,7 @@ func TestNextBlockParser(t *testing.T) {
 func TestNoNextBlockParser(t *testing.T) {
   txt := "There is no next block\n"
   toks := Tokenize(txt)
-  parser := create_parser("top", toks)
+  parser := create_parser("top", toks, envAlteration{})
   parser.nextBlock()
   assertEqual(t, "Next block position is a EOF", len(parser.items)-1, parser.pos)
 }
@@ -271,3 +271,12 @@ func TestSyntaxError3(t *testing.T) {
   p := Parse(Tokenize(doc))
   assertEqual(t, "Node count", 3, len(p))
 }
+
+// func TestSyntaxError4(t *testing.T) {
+//   // = pipo == is actually not a broken title
+//   doc := "===broken title==\nNice valid text"
+
+//   p := Parse(Tokenize(doc))
+//   fmt.Println(p)
+//   assertEqual(t, "Node count", 3, len(p))
+// }
