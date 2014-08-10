@@ -140,8 +140,8 @@ func outOfBoundsPanic(p *parser, s int) {
   p.defaultInspectable(&myerr)
   msg := fmt.Sprintf("Out of bounds Panic (from %d : %s)", s, p.items[s:])
   myerr.message = msg
-  myerr.behavior = ignoreSectionBehavior // p.onError // ignoreSectionBehavior // p.env.onError
   myerr.class = EOFException
+  myerr.behavior = ignoreSectionBehavior
 
   glog.V(2).Infoln(msg)
   panic(myerr)

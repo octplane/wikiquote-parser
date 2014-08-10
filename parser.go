@@ -7,6 +7,7 @@ import (
 
 type parser struct {
   name         string
+  parent       *parser
   items        []item
   start        int
   pos          int
@@ -14,6 +15,12 @@ type parser struct {
   exitTypes    []token
   exitSequence []token
   onError      behaviorOnError
+}
+
+func (p *parser) CreateParser(name string, tokens []item, exitTypes []token, exitSequence []token, onError behaviorOnError) *parser {
+  ret := create_parser(name, tokens, exitTypes, exitSequence, onError)
+  ret.parent = p
+  return ret
 }
 
 func create_parser(name string, tokens []item, exitTypes []token, exitSequence []token, onError behaviorOnError) *parser {
@@ -85,17 +92,17 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
       if p.currentItem().Typ == tokenEq {
         k := elt.Val
         p.consume(1)
-        params, consumed := ParseWithEnv(fmt.Sprintf("%s::Param for %s", p.name, k), p.items[p.pos:], []token{itemPipe, stop}, nil, abortBehavior)
+        params, consumed := ParseWithEnv(fmt.Sprintf("%s::Param for %s", p.name, k), p, p.items[p.pos:], []token{itemPipe, stop}, nil, abortBehavior)
         node.NamedParams[k] = params
         p.consume(consumed)
       } else {
         p.backup(1)
-        params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous parameter", p.name), p.items[p.pos:], []token{itemPipe, stop}, nil, abortBehavior)
+        params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous parameter", p.name), p, p.items[p.pos:], []token{itemPipe, stop}, nil, abortBehavior)
         node.Params = append(node.Params, params)
         p.consume(consumed)
       }
     default:
-      params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous Complex parameter", p.name), p.items[p.pos:], []token{itemPipe, stop}, nil, abortBehavior)
+      params, consumed := ParseWithEnv(fmt.Sprintf("%s::Anonymous Complex parameter", p.name), p, p.items[p.pos:], []token{itemPipe, stop}, nil, abortBehavior)
       node.Params = append(node.Params, params)
       p.consume(consumed)
     }
@@ -160,13 +167,18 @@ func (ev *parser) EnvironmentString() string {
   return st
 }
 
-func ParseWithEnv(title string, items []item, exitTypes []token, exitSequence []token, onError behaviorOnError) (ret Nodes, consumed int) {
-  p := create_parser(title, items, exitTypes, exitSequence, onError)
-  glog.V(2).Infof("%s: Creating Parser (%s) with %d items\n", title, p.EnvironmentString(), len(items))
+func ParseWithEnv(name string, parent *parser, items []item, exitTypes []token, exitSequence []token, onError behaviorOnError) (ret Nodes, consumed int) {
+  var p *parser
+  if parent != nil {
+    p = parent.CreateParser(name, items, exitTypes, exitSequence, onError)
+  } else {
+    p = create_parser(name, items, exitTypes, exitSequence, onError)
+  }
+  glog.V(2).Infof("%s: Creating Parser (%s) with %d items\n", name, p.EnvironmentString(), len(items))
   ret = make([]Node, 0)
 
   ret = p.parse()
-  glog.V(2).Infof("%s: Consumed %d / %d\n", title, p.consumed, len(p.items))
+  glog.V(2).Infof("%s: Consumed %d / %d\n", name, p.consumed, len(p.items))
   return ret, p.consumed
 }
 
@@ -176,7 +188,7 @@ func Parse(items []item) (ret Nodes) {
 }
 
 func ParseWithConsumed(items []item) (ret Nodes, consumed int) {
-  return ParseWithEnv("top-level", items, nil, nil, ignoreSectionBehavior)
+  return ParseWithEnv("top-level", nil, items, nil, nil, ignoreSectionBehavior)
 }
 
 func (p *parser) parse() (ret Nodes) {

@@ -37,6 +37,7 @@ func (p *parser) parseTitle() (ret Node) {
   ret = Node{Typ: NodeTitle, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
   ret.NamedParams["level"] = Nodes{Node{Typ: NodeText, Val: fmt.Sprintf("%d", level)}}
   content, consumed := ParseWithEnv(fmt.Sprintf("%s::Title(%d)", p.name, level),
+    p,
     p.items[p.pos:],
     nil,
     exitSequence,
@@ -60,7 +61,9 @@ func (p *parser) ParseLink() Node {
   ret := Node{Typ: NodeLink, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
 
   p.eatUntil(linkStart)
-  linkObject, consumed := ParseWithEnv(fmt.Sprintf("%s::Link", p.name), p.items[p.pos:],
+  linkObject, consumed := ParseWithEnv(fmt.Sprintf("%s::Link", p.name),
+    p,
+    p.items[p.pos:],
     []token{itemPipe, linkEnd}, nil, ignoreSectionBehavior)
   ret.NamedParams["link"] = linkObject
   p.consume(consumed)
@@ -75,7 +78,9 @@ func (p *parser) ParseTemplate() Node {
   glog.V(2).Infoln("Parsing a template")
 
   p.eatUntil(templateStart)
-  name, consumed := ParseWithEnv(fmt.Sprintf("%s::Template", p.name), p.items[p.pos:],
+  name, consumed := ParseWithEnv(fmt.Sprintf("%s::Template", p.name),
+    p,
+    p.items[p.pos:],
     []token{itemPipe, templateEnd}, nil, ignoreSectionBehavior)
   ret.NamedParams["name"] = name
   p.consume(consumed)
@@ -90,7 +95,9 @@ func (p *parser) ParsePlaceholder() Node {
   ret := Node{Typ: NodePlaceholder, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
 
   p.eatUntil(placeholderStart)
-  name, consumed := ParseWithEnv(fmt.Sprintf("%s::Placeholder", p.name), p.items[p.pos:],
+  name, consumed := ParseWithEnv(fmt.Sprintf("%s::Placeholder", p.name),
+    p,
+    p.items[p.pos:],
     []token{placeholderEnd}, nil, ignoreSectionBehavior)
 
   ret.NamedParams["content"] = name
