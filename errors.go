@@ -57,7 +57,7 @@ func (p *parser) defaultInspectable(i *inspectable) {
   i.parser = p
   i.pos = p.pos
   i.delta = 8
-  i.behavior = p.env.onError
+  i.behavior = p.onError
   i.class = RuntimeException
 }
 
@@ -106,10 +106,10 @@ func (rl reportLevel) String() string {
 
 func (me inspectable) handleError(parentRL reportLevel) reportLevel {
   rl := parentRL
-  if me.behavior == ignoreSectionBehavior {
+  if me.behavior != abortBehavior {
     rl = noReport
   } else {
-    glog.V(2).Infof("parentrl : %s, message: %s", parentRL.String(), me.message)
+    glog.V(2).Infof("Parent Report Level: %s, and me: %s, and parser: %s", parentRL.String(), me.behavior.String(), me.parser.onError.String())
   }
   _, ok := me.err.(inspectable)
   if !ok && rl == report {
@@ -122,7 +122,7 @@ func (me inspectable) handleError(parentRL reportLevel) reportLevel {
 }
 
 func (me *inspectable) dumpStream() {
-  glog.V(2).Infoln("Inspecting stack during known Exception")
+  glog.V(2).Infoln("Inspecting stack during Inspectable error")
   // rewind in stream
   // TOKENSTOKENS
   //   ˆ
@@ -132,30 +132,18 @@ func (me *inspectable) dumpStream() {
   // highlight at:
   // min ( me.delta, error position)
   me.parser.pos = int(math.Max(float64(me.pos-me.delta), 0))
-  me.parser.inspectHilight(me.delta*2, int(math.Min(float64(me.delta), float64(me.pos))))
-}
-
-func (p *parser) handleTitleError(pos int, lvl int) {
-  if err := recover(); err != nil {
-
-    level := "?"
-    if lvl > 0 {
-      level = fmt.Sprintf("%d", lvl)
-    }
-    msg := fmt.Sprintf("Invalid title-%s format at position %d", level, pos)
-
-    myerr := createInspectable(p, pos, msg, err)
-    panic(myerr)
-  }
+  me.parser.inspectHilight(me.delta*2, int(math.Min(float64(me.delta), float64(me.pos)-1)))
 }
 
 func outOfBoundsPanic(p *parser, s int) {
-  msg := fmt.Sprintf("Went too far, out of bounds (from %d : %s)", s, p.items[s:])
   myerr := inspectable{}
   p.defaultInspectable(&myerr)
+  msg := fmt.Sprintf("Out of bounds Panic (from %d : %s)", s, p.items[s:])
   myerr.message = msg
-  myerr.behavior = ignoreSectionBehavior // p.env.onError
+  myerr.behavior = ignoreSectionBehavior // p.onError // ignoreSectionBehavior // p.env.onError
   myerr.class = EOFException
+
+  glog.V(2).Infoln(msg)
   panic(myerr)
 }
 
@@ -217,7 +205,7 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
       panic(last_valid_inspectable)
 
     case ignoreLineBehavior:
-      glog.V(2).Infoln("ignoreLineBehavior: Last inspectable", last_valid_inspectable, "when looking for", p.env.String())
+      glog.V(2).Infoln("ignoreLineBehavior: Last inspectable", last_valid_inspectable)
       // Reset parser internal state
       p.pos = 0
       p.consumed = 0
@@ -231,7 +219,7 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
     case ignoreSectionBehavior:
       // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
       // and start parsing again
-      glog.V(2).Infoln("ignoreSectionBehavior: Last inspectable", last_valid_inspectable, "when looking for", p.env.String())
+      glog.V(2).Infoln("ignoreSectionBehavior: Last inspectable", last_valid_inspectable)
       // Reset parser internal state
       p.pos = 0
       p.consumed = 0
