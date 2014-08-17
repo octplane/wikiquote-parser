@@ -252,7 +252,7 @@ func TestSyntaxError(t *testing.T) {
   doc := "Some line\n==== Malformed title===\n\nAnother Block"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 4, len(p))
+  assertEqual(t, "Node count", 5, len(p))
 
 }
 
@@ -261,7 +261,7 @@ func TestSyntaxError2(t *testing.T) {
   doc := "Some line\n==== Malformed title===\n\nAnother Block\n\n== This title is broken = \n\nEnd of block"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 8, len(p))
+  assertEqual(t, "Node count", 10, len(p))
 }
 
 func TestSyntaxError3(t *testing.T) {
@@ -269,6 +269,7 @@ func TestSyntaxError3(t *testing.T) {
   doc := "Nice valid text\n{{Template Name|and this complex parameter will never be closed"
 
   p := Parse(Tokenize(doc))
+  fmt.Println(p)
   assertEqual(t, "Node count", 3, len(p))
 }
 

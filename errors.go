@@ -6,24 +6,6 @@ import (
   "math"
 )
 
-type behaviorOnError int
-
-const (
-  abortBehavior = behaviorOnError(iota)
-  ignoreSectionBehavior
-  ignoreLineBehavior
-)
-
-func (be behaviorOnError) String() string {
-  switch be {
-  case abortBehavior:
-    return "Aborting Exception"
-  case ignoreSectionBehavior:
-    return "Ignore current section Exception"
-  }
-  panic(fmt.Sprintf("Unknown behavior %d", be))
-}
-
 const (
   EOFException = iota
   RuntimeException
@@ -87,23 +69,6 @@ func (me inspectable) handle() {
   }
 }
 
-type reportLevel int
-
-const (
-  noReport = reportLevel(iota)
-  report
-)
-
-func (rl reportLevel) String() string {
-  switch rl {
-  case noReport:
-    return "No report"
-  case report:
-    return "Report"
-  }
-  panic("Unknown report level")
-}
-
 func (me inspectable) handleError(parentRL reportLevel) reportLevel {
   rl := parentRL
   if me.behavior != abortBehavior {
@@ -119,6 +84,23 @@ func (me inspectable) handleError(parentRL reportLevel) reportLevel {
     me.dumpStream()
   }
   return rl
+}
+
+type reportLevel int
+
+const (
+  noReport = reportLevel(iota)
+  report
+)
+
+func (rl reportLevel) String() string {
+  switch rl {
+  case noReport:
+    return "No report"
+  case report:
+    return "Report"
+  }
+  panic("Unknown report level")
 }
 
 func (me *inspectable) dumpStream() {
@@ -187,51 +169,47 @@ func (p *parser) inspect(ahead int) {
 
 // called by main parser or subparser when something wrong appears
 func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
-  switch err.(type) {
-  case inspectable:
-    err.(inspectable).handle()
-    insp := err.(inspectable)
-    last_valid_inspectable := insp
-    ok := true
-    var behavior behaviorOnError
-    for ok {
-      last_valid_inspectable = insp
-      behavior = insp.behavior
-      insp, ok = insp.err.(inspectable)
-    }
-    switch behavior {
+  glog.V(2).Infof(">> Error in parser \"%s\", environment: %s", p.name, p.EnvironmentString())
 
-    case abortBehavior:
-      panic(last_valid_inspectable)
+  currentParser := p
+  // Ramp up in the parser until we are at top level OR we have someone who want to handle this mess
+  for currentParser != nil && currentParser.onError != abortBehavior {
+    glog.V(2).Infof("[%s] %s", currentParser.name, currentParser.onError.String())
+    currentParser = currentParser.parent
+  }
 
-    case ignoreLineBehavior:
-      glog.V(2).Infoln("ignoreLineBehavior: Last inspectable", last_valid_inspectable)
-      // Reset parser internal state
-      p.pos = 0
-      p.consumed = 0
-      p.nextLine()
-      glog.V(2).Infof("Now at position %d\n", p.pos)
-      ret = make([]Node, 0)
+  behavior := p.onError
 
-      ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
-      return ret
+  switch behavior {
 
-    case ignoreSectionBehavior:
-      // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
-      // and start parsing again
-      glog.V(2).Infoln("ignoreSectionBehavior: Last inspectable", last_valid_inspectable)
-      // Reset parser internal state
-      p.pos = 0
-      p.consumed = 0
-      p.nextBlock()
-      glog.V(2).Infof("Now at position %d\n", p.pos)
-      ret = make([]Node, 0)
+  case abortBehavior:
+    panic(err)
 
-      ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
-      return ret
-    }
-  default:
-    p.syntaxEError(err, p.pos, "Error not handled by the parser :-/")
+  case ignoreLineBehavior:
+    glog.V(2).Infoln("ignoreLineBehavior")
+    // Reset parser internal state
+    p.pos = 0
+    p.consumed = 0
+    p.nextLine()
+    glog.V(2).Infof("Now at position %d\n", p.pos)
+    ret = make([]Node, 0)
+
+    ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
+    return ret
+
+  case ignoreSectionBehavior:
+    // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
+    // and start parsing again
+    glog.V(2).Infoln("ignoreSectionBehavior")
+    // Reset parser internal state
+    p.pos = 0
+    p.consumed = 0
+    p.nextBlock()
+    glog.V(2).Infof("Now at position %d\n", p.pos)
+    ret = make([]Node, 0)
+
+    ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
+    return ret
   }
   // Go down in the error hierarchy
   return ret

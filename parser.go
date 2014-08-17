@@ -75,8 +75,29 @@ func (p *parser) eatUntil(types ...token) {
   panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.Val, exp, it.Typ.String()))
 }
 
+func ScanSubArgumentsUntil(name string, parent *parser, node *Node, stop token) (consumed int) {
+  var p *parser
+  name = name + "-subArgs"
+  if parent != nil {
+    p = parent.CreateParser(name, parent.items[parent.pos:], nil, nil, ignoreSectionBehavior)
+  } else {
+    p = create_parser(name, parent.items[parent.pos:], nil, nil, ignoreSectionBehavior)
+  }
+  glog.V(2).Infof("%s: Creating Argument Parser (%s)\n", name, p.EnvironmentString())
+  p.scanSubArgumentsUntil(node, stop)
+  return p.consumed
+}
+
 func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
   glog.V(2).Infof("Sub-scanning until %s", stop.String())
+  ret := make([]Node, 0)
+
+  defer func() {
+    if err := recover(); err != nil {
+      ret = p.handleParseError(err, ret)
+    }
+  }()
+
   elt := p.currentItem()
   for elt.Typ != tokenEOF {
     elt = p.currentItem()
@@ -127,7 +148,7 @@ func (p *parser) nextLine() {
 
 // Start at next double LF
 func (p *parser) nextBlock() {
-  glog.V(2).Infof("Will now attempt to find next block for %s\n", p.items[p.pos:])
+  glog.V(2).Infof("Parser: %s Will now attempt to find next block in %s\n", p.name, p.items[p.pos:])
   for p.pos < len(p.items) {
     if p.currentItem().Typ == tokenLF {
       p.consume(1)
@@ -154,16 +175,14 @@ func (ev *parser) EnvironmentString() string {
     st += et.String() + " "
   }
 
-  if len(ev.exitTypes) > 0 {
-    st += "\n"
-  }
-
   if len(ev.exitSequence) > 0 {
-    st += "Closing Sequence: "
+    st += ". Closing Sequence: "
   }
   for _, es := range ev.exitSequence {
     st += es.String()
   }
+
+  st += ". Error does: " + ev.onError.String()
   return st
 }
 
@@ -174,7 +193,7 @@ func ParseWithEnv(name string, parent *parser, items []item, exitTypes []token, 
   } else {
     p = create_parser(name, items, exitTypes, exitSequence, onError)
   }
-  glog.V(2).Infof("%s: Creating Parser (%s) with %d items\n", name, p.EnvironmentString(), len(items))
+  glog.V(2).Infof("%s: Creating Parser (%s) with %d items: %+v\n", name, p.EnvironmentString(), len(items), items)
   ret = make([]Node, 0)
 
   ret = p.parse()
@@ -200,7 +219,7 @@ func (p *parser) parse() (ret Nodes) {
     }
   }()
 
-  glog.V(2).Infof("Exit sequence: %s\n", p.EnvironmentString())
+  glog.V(2).Infof("Starting parsing with exit sequence: %s\n", p.EnvironmentString())
   p.pos = 0
   it := p.currentItem()
 
