@@ -69,38 +69,31 @@ func (p *parser) ParseLink() Node {
   p.consume(consumed)
 
   consumed = ScanSubArgumentsUntil("link", p, &ret, linkEnd)
-  p.consume(consumed)
+
+  // outer loop will eat last item automatically
+  p.consume(consumed - 1)
   return ret
 }
 
-func (p *parser) ParseTemplate() Node {
-  name := p.name + ".innerTemplateParser"
-  actualParser := p.CreateParser(name, p.items[p.pos:], nil, nil, ignoreSectionBehavior)
-  node, consumed := actualParser.innerTemplateParser()
-  p.consume(consumed)
-  return node
-}
-
-func (p *parser) innerTemplateParser() (ret Node, consumed int) {
+func (p *parser) ParseTemplate() (ret Node) {
   ret = Node{Typ: NodeTemplate, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
-  consumed = 0
   glog.V(2).Infoln("Parsing a template")
 
   p.eatUntil(templateStart)
-  name, cons1 := ParseWithEnv(fmt.Sprintf("%s::Template", p.name),
+  name, consumed := ParseWithEnv(fmt.Sprintf("%s::Template", p.name),
     p,
     p.items[p.pos:],
     []token{itemPipe, templateEnd}, nil, ignoreSectionBehavior)
   ret.NamedParams["name"] = name
-  p.consume(cons1)
-  consumed += cons1
+  p.consume(consumed)
   glog.V(2).Infof("Found template %s, now scanning sub arguments from %s", name.String(), p.items[p.pos:])
-  cons1 = ScanSubArgumentsUntil("template", p, &ret, templateEnd)
-  p.consume(cons1)
+  consumed = ScanSubArgumentsUntil("template", p, &ret, templateEnd)
 
-  consumed += cons1
+  // outer loop will eat last item automatically
+  p.consume(consumed - 1)
+
   glog.V(2).Infoln("Parsed a template")
-  return ret, consumed
+  return ret
 }
 
 func (p *parser) ParsePlaceholder() Node {

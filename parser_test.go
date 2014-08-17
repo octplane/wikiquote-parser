@@ -269,15 +269,13 @@ func TestSyntaxError3(t *testing.T) {
   doc := "Nice valid text\n{{Template Name|and this complex parameter will never be closed"
 
   p := Parse(Tokenize(doc))
-  fmt.Println(p)
   assertEqual(t, "Node count", 3, len(p))
 }
 
-// func TestSyntaxError4(t *testing.T) {
-//   // = pipo == is actually not a broken title
-//   doc := "===broken title==\nNice valid text"
+func TestSyntaxError4(t *testing.T) {
+  // = pipo == is actually not a broken title
+  doc := "===broken title==\nNice valid text"
 
-//   p := Parse(Tokenize(doc))
-//   fmt.Println(p)
-//   assertEqual(t, "Node count", 3, len(p))
-// }
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Node count", 3, len(p))
+}

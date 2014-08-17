@@ -104,7 +104,8 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
     glog.V(2).Infof("Element is now %s, scanning until %s\n", elt.String(), stop.String())
     switch elt.Typ {
     case stop, tokenEOF:
-      glog.V(2).Infof("Finished sub-scanning at token %s", elt.Typ.String())
+      p.consume(1)
+      glog.V(2).Infof("Finished sub-scanning at token %s, remains: %s", elt.Typ.String(), p.items[p.pos:])
       return
     case itemPipe:
       p.consume(1)
@@ -283,7 +284,9 @@ func (p *parser) parse() (ret Nodes) {
     glog.V(2).Infof("Appending %s (remains %s), until %s", n.String(), p.items[p.pos:], p.EnvironmentString())
     ret = append(ret, n)
 
-    p.consume(1)
+    if p.currentItem().Typ != tokenEOF {
+      p.consume(1)
+    }
     it = p.currentItem()
 
   }
