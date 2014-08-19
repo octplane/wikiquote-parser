@@ -87,7 +87,7 @@ func (p *parser) ParseTemplate() (ret Node) {
   ret.NamedParams["name"] = name
   p.consume(consumed)
   glog.V(2).Infof("Found template %s, now scanning sub arguments from %s", name.String(), p.items[p.pos:])
-  consumed = ScanSubArgumentsUntil("template", p, &ret, templateEnd)
+  consumed = ScanSubArgumentsUntil(fmt.Sprintf("template-%s", name), p, &ret, templateEnd)
 
   // outer loop will eat last item automatically
   p.consume(consumed - 1)

@@ -56,7 +56,7 @@ func (n *Node) StringParam(k string) string {
       return param[0].Val
     } else {
       glog.V(2).Infof("Parameter %s is of length 0 for node %s", k, n.String())
-      panic("Weirdo")
+      panic("Something is wrong here")
     }
   }
   return ""
