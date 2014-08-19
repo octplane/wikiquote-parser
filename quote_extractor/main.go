@@ -164,7 +164,7 @@ func main() {
 
   //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
   //fi, err := os.Open("sample3.xml")
-  fi, err := os.Open("sample2.xml")
+  fi, err := os.Open("sample.xml")
   //fi, err := os.Open("sample1.xml")
 
   if err != nil {

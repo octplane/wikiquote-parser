@@ -279,3 +279,9 @@ func TestSyntaxError4(t *testing.T) {
   p := Parse(Tokenize(doc))
   assertEqual(t, "Node count", 3, len(p))
 }
+
+func TestNowikiMarkup(t *testing.T) {
+  doc := "<nowiki>{{</nowiki>"
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Nowiki ignored", 1, len(p))
+}

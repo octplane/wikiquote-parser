@@ -2,6 +2,7 @@ package wikimediaparser
 
 import (
   "fmt"
+  "github.com/golang/glog"
   "strings"
 )
 
@@ -47,17 +48,25 @@ func (n *Node) String() string {
 
 // StringParam  returns the string value of a given named parameter
 func (n *Node) StringParam(k string) string {
-  return n.NamedParams[k][0].Val
+  param, ok := n.NamedParams[k]
+  if !ok {
+    glog.V(2).Infof("Unable to extract parameter \"%s\" for node %s", k, n.String())
+  } else {
+    if len(param) > 0 {
+      return param[0].Val
+    } else {
+      glog.V(2).Infof("Parameter %s is of length 0 for node %s", k, n.String())
+      panic("Weirdo")
+    }
+  }
+  return ""
 }
 
 func (n *Node) StringParamOrEmpty(k string) string {
   v, ok := n.NamedParams[k]
   if ok {
     ret := v.StringRepresentation()
-    if strings.HasPrefix(ret, "\n") {
-      return ret[1:]
-    }
-    return ret
+    return strings.Trim(ret, " \n")
   }
   return ""
 }

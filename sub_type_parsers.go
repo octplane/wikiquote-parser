@@ -60,7 +60,7 @@ func (p *parser) parseTitle() (ret Node) {
 func (p *parser) ParseLink() Node {
   ret := Node{Typ: NodeLink, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
 
-  p.eatUntil(linkStart)
+  p.eat(linkStart)
   linkObject, consumed := ParseWithEnv(fmt.Sprintf("%s::Link", p.name),
     p,
     p.items[p.pos:],
@@ -79,7 +79,7 @@ func (p *parser) ParseTemplate() (ret Node) {
   ret = Node{Typ: NodeTemplate, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
   glog.V(2).Infoln("Parsing a template")
 
-  p.eatUntil(templateStart)
+  p.eat(templateStart)
   name, consumed := ParseWithEnv(fmt.Sprintf("%s::Template", p.name),
     p,
     p.items[p.pos:],
@@ -99,7 +99,7 @@ func (p *parser) ParseTemplate() (ret Node) {
 func (p *parser) ParsePlaceholder() Node {
   ret := Node{Typ: NodePlaceholder, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
 
-  p.eatUntil(placeholderStart)
+  p.eat(placeholderStart)
   name, consumed := ParseWithEnv(fmt.Sprintf("%s::Placeholder", p.name),
     p,
     p.items[p.pos:],
@@ -108,5 +108,11 @@ func (p *parser) ParsePlaceholder() Node {
   ret.NamedParams["content"] = name
   p.consume(consumed)
 
+  return ret
+}
+
+func (p *parser) ParseNowiki() Node {
+  ret := Node{Typ: NodeText, Val: "Nowiki node"}
+  p.eatUntil(tokenNowikiEnd)
   return ret
 }

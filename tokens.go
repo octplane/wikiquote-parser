@@ -26,6 +26,8 @@ const (
   tokenEq
   tokenLF
   controlStruct
+  tokenNowikiStart
+  tokenNowikiEnd
   tokenEOF
 )
 
@@ -39,6 +41,8 @@ const rightLink = "]]"
 const pipe = "|"
 const eq = "="
 const lf = "\n"
+const nowikistart = "<nowiki>"
+const nowikiend = "</nowiki>"
 
 var strToToken map[string]token
 var tokensAsString []string
@@ -54,6 +58,8 @@ func init() {
     pipe:             itemPipe,
     eq:               tokenEq,
     lf:               tokenLF,
+    nowikistart:      tokenNowikiStart,
+    nowikiend:        tokenNowikiEnd,
   }
   tokensAsString = []string{
     leftPlaceholder,
@@ -65,6 +71,8 @@ func init() {
     pipe,
     eq,
     lf,
+    nowikistart,
+    nowikiend,
   }
 }
 
@@ -75,7 +83,8 @@ func (i item) String() string {
     return "E"
   case itemError:
     return i.Val
-  case templateStart, templateEnd, linkStart, linkEnd, placeholderStart, placeholderEnd:
+  case templateStart, templateEnd, linkStart, linkEnd, placeholderStart, placeholderEnd,
+    tokenNowikiStart, tokenNowikiEnd:
     return fmt.Sprintf("%s", desc)
   case itemText:
     if len(i.Val) > 40 {
@@ -121,6 +130,10 @@ func (itt token) String() string {
     return "Control struct"
   case tokenEq:
     return "="
+  case tokenNowikiStart:
+    return "<noWiki>"
+  case tokenNowikiEnd:
+    return "</noWiki>"
   default:
     return "??"
   }

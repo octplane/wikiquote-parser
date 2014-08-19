@@ -62,17 +62,22 @@ func (p *parser) eatCurrentItem() item {
   return ret
 }
 
-func (p *parser) eatUntil(types ...token) {
+func (p *parser) eat(typ token) {
   it := p.eatCurrentItem()
   exp := make([]string, 0)
 
-  for _, typ := range types {
-    if it.Typ == token(typ) {
-      return
-    }
-    exp = append(exp, token(typ).String())
+  if it.Typ == token(typ) {
+    return
   }
   panic(fmt.Sprintf("Syntax Error at %q\nExpected any of %q, got %q", it.Val, exp, it.Typ.String()))
+}
+
+func (p *parser) eatUntil(typ token) {
+  it := p.currentItem()
+
+  for it.Typ != token(typ) {
+    it = p.eatCurrentItem()
+  }
 }
 
 func ScanSubArgumentsUntil(name string, parent *parser, node *Node, stop token) (consumed int) {
@@ -277,6 +282,8 @@ func (p *parser) parse() (ret Nodes) {
         p.backup(1)
         n = Node{Typ: NodeText, Val: "\n"}
       }
+    case tokenNowikiStart:
+      n = p.ParseNowiki()
     default:
       glog.V(2).Infof("UNK", it.String())
       n = Node{Typ: NodeUnknown, Val: it.Val}
