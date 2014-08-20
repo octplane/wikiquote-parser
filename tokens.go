@@ -51,8 +51,8 @@ func init() {
   strToToken = map[string]token{
     leftPlaceholder:  placeholderStart,
     leftTemplate:     templateStart,
-    rightPlaceholder: placeholderEnd,
     rightTemplate:    templateEnd,
+    rightPlaceholder: placeholderEnd,
     leftLink:         linkStart,
     rightLink:        linkEnd,
     pipe:             itemPipe,
@@ -64,8 +64,8 @@ func init() {
   tokensAsString = []string{
     leftPlaceholder,
     leftTemplate,
-    rightPlaceholder,
     rightTemplate,
+    rightPlaceholder,
     leftLink,
     rightLink,
     pipe,
@@ -115,7 +115,7 @@ func (itt token) String() string {
   case templateEnd:
     return "Template end"
   case linkStart:
-    return "Link start"
+    return leftLink
   case linkEnd:
     return rightLink
   case placeholderStart:

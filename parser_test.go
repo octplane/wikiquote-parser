@@ -285,3 +285,9 @@ func TestNowikiMarkup(t *testing.T) {
   p := Parse(Tokenize(doc))
   assertEqual(t, "Nowiki ignored", 1, len(p))
 }
+
+func TestPacha(t *testing.T) {
+  doc := "{{Réf Film|titre=Le Pacha|auteur=[[Michel Audiard]]|date={{œuvre|de 1968|1968}}|acteur={{w|Jean Gabin}}}}"
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Node count", 1, len(p))
+}

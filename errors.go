@@ -125,26 +125,26 @@ func outOfBoundsPanic(p *parser, s int) {
   myerr.class = EOFException
   myerr.behavior = ignoreSectionBehavior
 
-  glog.V(2).Infoln(msg)
+  p.log(msg)
   panic(myerr)
 }
 
 func (p *parser) syntaxEError(err interface{}, pos int, format string, params ...interface{}) {
   delta := 4
   p.pos = int(math.Max(0, float64(pos-delta)))
-  glog.V(2).Infof("Syntax error at %q (%d):", p.items[pos].String(), p.pos)
-  glog.V(2).Infof(format, params...)
+  p.log("Syntax error at %q (%d):", p.items[pos].String(), p.pos)
+  p.log(format, params...)
   p.inspectHilight(delta*2, delta)
   panic(err)
 }
 
 func (p *parser) inspectHilight(ahead int, hi int) {
-  glog.V(2).Infof("Error Context:\n")
+  p.log("Error Context:\n")
   prefix := " "
   line := "\""
 
   if p.pos > len(p.items) {
-    glog.V(2).Infof("Cannot inspect from here: at end of stream (pos=%d)", p.pos)
+    p.log("Cannot inspect from here: at end of stream (pos=%d)", p.pos)
   } else {
     for pos, content := range p.items[p.pos:] {
       if pos > ahead {
@@ -169,13 +169,17 @@ func (p *parser) inspect(ahead int) {
 
 // called by main parser or subparser when something wrong appears
 func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
-  glog.V(2).Infof(">> Error in parser \"%s\", environment: %s", p.name, p.EnvironmentString())
+  p.log(">> Error, environment: %s", p.EnvironmentString())
 
   currentParser := p
   // Ramp up in the parser until we are at top level OR we have someone who want to handle this mess
   for currentParser != nil && currentParser.onError != abortBehavior {
-    glog.V(2).Infof("[%s] %s", currentParser.name, currentParser.onError.String())
+    p.log("%s", currentParser.onError.String())
     currentParser = currentParser.parent
+  }
+
+  if glog.V(9) {
+    panic("Error")
   }
 
   behavior := p.onError
@@ -186,12 +190,12 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
     panic(err)
 
   case ignoreLineBehavior:
-    glog.V(2).Infoln("ignoreLineBehavior")
+    p.log("ignoreLineBehavior")
     // Reset parser internal state
     p.pos = 0
     p.consumed = 0
     p.nextLine()
-    glog.V(2).Infof("Now at position %d\n", p.pos)
+    p.log("Now at position %d\n", p.pos)
     ret = make([]Node, 0)
 
     ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})
@@ -200,12 +204,12 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
   case ignoreSectionBehavior:
     // We were told to ignore the syntax error. We will move on until we meet 2 consecutives \n
     // and start parsing again
-    glog.V(2).Infoln("ignoreSectionBehavior")
+    p.log("ignoreSectionBehavior")
     // Reset parser internal state
     p.pos = 0
     p.consumed = 0
     p.nextBlock()
-    glog.V(2).Infof("Now at position %d\n", p.pos)
+    p.log("Now at position %d\n", p.pos)
     ret = make([]Node, 0)
 
     ret = append(ret, Node{Typ: NodeInvalid, Val: fmt.Sprintf("> (ignored until %d )<", p.pos)})

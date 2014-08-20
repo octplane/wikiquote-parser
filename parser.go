@@ -80,6 +80,12 @@ func (p *parser) eatUntil(typ token) {
   }
 }
 
+func (p *parser) log(format string, params ...interface{}) {
+  parms := []interface{}{p.name}
+  parms = append(parms, params...)
+  glog.V(2).Infof("[%s] "+format, parms...)
+}
+
 func ScanSubArgumentsUntil(name string, parent *parser, node *Node, stop token) (consumed int) {
   var p *parser
   name = name + "-subArgs"
@@ -88,13 +94,13 @@ func ScanSubArgumentsUntil(name string, parent *parser, node *Node, stop token) 
   } else {
     p = create_parser(name, parent.items[parent.pos:], nil, nil, ignoreSectionBehavior)
   }
-  glog.V(2).Infof("%s: Creating Argument Parser (%s)\n", name, p.EnvironmentString())
+  p.log("%s: Creating Argument Parser (%s)\n", name, p.EnvironmentString())
   p.scanSubArgumentsUntil(node, stop)
   return p.consumed
 }
 
 func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
-  glog.V(2).Infof("Sub-scanning until %s", stop.String())
+  p.log("Sub-scanning until %s", stop.String())
   ret := make([]Node, 0)
 
   defer func() {
@@ -106,11 +112,11 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
   elt := p.currentItem()
   for elt.Typ != tokenEOF {
     elt = p.currentItem()
-    glog.V(2).Infof("Element is now %s, scanning until %s\n", elt.String(), stop.String())
+    p.log("Element is now %s, scanning until %s\n", elt.String(), stop.String())
     switch elt.Typ {
     case stop, tokenEOF:
       p.consume(1)
-      glog.V(2).Infof("Finished sub-scanning at token %s, remains: %s", elt.Typ.String(), p.items[p.pos:])
+      p.log("Finished sub-scanning at token %s, remains: %s", elt.Typ.String(), p.items[p.pos:])
       return
     case itemPipe:
       p.consume(1)
@@ -137,7 +143,7 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
 }
 
 func (p *parser) nextLine() {
-  glog.V(2).Infof("Will now attempt to find next line for %s\n", p.items[p.pos:])
+  p.log("Will now attempt to find next line for %s\n", p.items[p.pos:])
   for p.pos < len(p.items) {
     if p.currentItem().Typ == tokenLF {
       p.consume(1)
@@ -154,7 +160,7 @@ func (p *parser) nextLine() {
 
 // Start at next double LF
 func (p *parser) nextBlock() {
-  glog.V(2).Infof("Parser: %s Will now attempt to find next block in %s\n", p.name, p.items[p.pos:])
+  p.log("Parser: %s Will now attempt to find next block in %s\n", p.name, p.items[p.pos:])
   for p.pos < len(p.items) {
     if p.currentItem().Typ == tokenLF {
       p.consume(1)
@@ -199,11 +205,11 @@ func ParseWithEnv(name string, parent *parser, items []item, exitTypes []token, 
   } else {
     p = create_parser(name, items, exitTypes, exitSequence, onError)
   }
-  glog.V(2).Infof("%s: Creating Parser (%s) with %d items: %+v\n", name, p.EnvironmentString(), len(items), items)
+  p.log("%s: Creating Parser (%s) with %d items: %+v\n", name, p.EnvironmentString(), len(items), items)
   ret = make([]Node, 0)
 
   ret = p.parse()
-  glog.V(2).Infof("%s: Consumed %d / %d\n", name, p.consumed, len(p.items))
+  p.log("%s: Consumed %d / %d\n", name, p.consumed, len(p.items))
   return ret, p.consumed
 }
 
@@ -225,12 +231,12 @@ func (p *parser) parse() (ret Nodes) {
     }
   }()
 
-  glog.V(2).Infof("Starting parsing with exit sequence: %s\n", p.EnvironmentString())
+  p.log("Starting parsing with exit sequence: %s\n", p.EnvironmentString())
   p.pos = 0
   it := p.currentItem()
 
   for it.Typ != tokenEOF {
-    glog.V(2).Infof("token %s\n", it.String())
+    p.log("token %s\n", it.String())
     // If the exit Sequence match, abort immediately
     if len(p.exitSequence) > 0 {
       matching := 0
@@ -243,7 +249,7 @@ func (p *parser) parse() (ret Nodes) {
         }
       }
       if matching == len(p.exitSequence) {
-        glog.V(2).Infof("Found exit sequence: %s\n", p.items[p.pos])
+        p.log("Found exit sequence: %s\n", p.items[p.pos])
         return ret
       } else {
         p.backup(matching)
@@ -273,8 +279,6 @@ func (p *parser) parse() (ret Nodes) {
         n = p.parseTitle()
       }
     case tokenLF:
-      glog.V(2).Info("LF")
-
       p.consume(1)
       if p.currentItem().Typ == tokenEq {
         n = p.parseTitle()
@@ -285,10 +289,9 @@ func (p *parser) parse() (ret Nodes) {
     case tokenNowikiStart:
       n = p.ParseNowiki()
     default:
-      glog.V(2).Infof("UNK", it.String())
       n = Node{Typ: NodeUnknown, Val: it.Val}
     }
-    glog.V(2).Infof("Appending %s (remains %s), until %s", n.String(), p.items[p.pos:], p.EnvironmentString())
+    p.log("[%s] Appending %s (remains %s), until %s", p.name, n.String(), p.items[p.pos:], p.EnvironmentString())
     ret = append(ret, n)
 
     if p.currentItem().Typ != tokenEOF {
