@@ -128,7 +128,7 @@ func (q *Quote) authorText() string {
   return q.source.StringParamOrEmpty("auteur")
 }
 
-var MAX_QUOTE_LENGTH = 80
+var MAX_QUOTE_LENGTH = 100
 
 func (q *Quote) valid() bool {
   valid := q.nonEmpty() && q.authorText() != "" && len(q.quoteString()) < MAX_QUOTE_LENGTH
