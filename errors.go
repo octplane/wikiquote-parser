@@ -179,6 +179,7 @@ func (p *parser) handleParseError(err interface{}, ret Nodes) Nodes {
   }
 
   if glog.V(9) {
+    p.inspect(5)
     panic("Error")
   }
 

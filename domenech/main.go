@@ -198,7 +198,7 @@ func main() {
   titleXPath := xmlpath.MustCompile("title")
 
   //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  fi, err := os.Open("sample4.xml")
+  fi, err := os.Open("sample5.xml")
   //fi, err := os.Open("sample.xml")
   //fi, err := os.Open("sample1.xml")
 
@@ -225,8 +225,8 @@ func main() {
     content, _ := textXPath.String(page)
     title, _ := titleXPath.String(page)
 
+    glog.V(2).Infof("XOXOXOXO - Entering %s", title)
     tokens := Tokenize(content)
-    glog.V(2).Infof("Entering %s", title)
     ExtractQuotes(Parse(tokens), title)
   }
 }

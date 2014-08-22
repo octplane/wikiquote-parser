@@ -107,21 +107,21 @@ func (i item) String() string {
 func (itt token) String() string {
   switch itt {
   case tokenEOF:
-    return "E"
+    return "<EOF>"
   case itemError:
     return "Error"
   case templateStart:
-    return "Template start"
+    return "{{"
   case templateEnd:
-    return "Template end"
+    return "}}"
   case linkStart:
     return leftLink
   case linkEnd:
     return rightLink
   case placeholderStart:
-    return "Placeholder start"
+    return "{{{"
   case placeholderEnd:
-    return "Placeholder end"
+    return "}}}"
   case itemText:
     return "Text"
   case itemPipe:

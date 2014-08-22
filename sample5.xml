@@ -1,0 +1,53 @@
+ <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.8/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mediawiki.org/xml/export-0.8/ http://www.mediawiki.org/xml/export-0.8.xsd" version="0.8" xml:lang="fr">
+  <page>
+    <title>Accueil</title>
+    <ns>0</ns>
+    <id>1527</id>
+    <restrictions>edit=autoconfirmed:move=sysop</restrictions>
+    <revision>
+      <id>198143</id>
+      <parentid>198139</parentid>
+      <timestamp>2014-04-11T21:00:34Z</timestamp>
+      <contributor>
+        <username>FrankyLeRoutier</username>
+        <id>2509</id>
+      </contributor>
+      <minor />
+      <comment>style</comment>
+      <text xml:space="preserve">{{Début cadre|bleu}}
+&lt;div id=&quot;mf-bienvenue&quot;&gt;[[Image:Bandeau wikiquote.jpg|left]]&lt;span style=&quot;font-size:180%&quot;&gt;&lt;span style=&quot;color:#444444&quot;&gt;'''WIKI'''&lt;/span&gt;&lt;span style=&quot;color:#999999&quot;&gt;'''QUOTE'''&lt;/span&gt;&lt;/span&gt;
+
+Bienvenue sur '''Wikiquote''', un projet libre de collecte de citations. Vous êtes invités à contribuer en ligne sur ce projet.
+
+Vous pouvez participer aux discussions concernant le projet au [[Wikiquote:Le Salon|Salon]].
+&lt;br clear=&quot;all&quot; /&gt;
+&lt;/div&gt;
+
+
+
+{{Fin cadre}}
+
+&lt;div style=&quot;text-align: center&quot;&gt;Nous sommes le {{CURRENTDAYNAME}} '''{{CURRENTDAY}} {{CURRENTMONTHNAME}} {{CURRENTYEAR}}''' et la Wikiquote francophone contient '''{{formatnum:{{NUMBEROFQUOTES}}}}''' citations réparties dans '''{{NUMBEROFARTICLES}}''' articles. Merci à tous !&lt;/div&gt;
+{{Wikiquote}}
+
+{{#ifeq:{{CURRENTDAY}}{{CURRENTMONTH}}|412|&lt;!--jour et mois OK--&gt;
+{{début cadre|rouge}}
+&lt;div id=&quot;mf-anniversaire&quot;&gt;{{{!}}width=&quot;100%&quot; align=&quot;center&quot; style=&quot;text-align:left;&quot;
+{{!}}[[Image:Birthday cake.jpg|150px|left]]
+{{!}}&lt;center&gt;La Wikiquote francophone fête aujourd'hui ses '''{{#expr:{{CURRENTYEAR}}-2006}} ans de réouverture''' !&lt;br/&gt;
+Tous les contributeurs peuvent lui laisser un petit mot au [[Wikiquote:Le Salon|salon]]…&lt;/center&gt;
+{{!}}}&lt;/div&gt;
+{{fin cadre}}
+|&lt;div id=&quot;mf-cdj&quot; title=&quot;Citation du jour&quot;&gt;{{Citation du jour}}&lt;/div&gt;&lt;!--jour ou mois incorrect--&gt;
+}}&lt;!--fin ifeq--&gt;
+
+{{début cadre|bleu}}
+{{Projets Wikimedia}}
+{{fin cadre}}
+{{nobots}}</text>
+      <sha1>2jom6gdgxze4mm3l1vq8ioncnwbzrm5</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+</mediawiki>
