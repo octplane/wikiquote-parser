@@ -5,10 +5,12 @@ import (
   "flag"
   "fmt"
   "github.com/golang/glog"
+  "github.com/jinzhu/gorm"
   . "github.com/octplane/wikiquote-parser"
+  "github.com/octplane/wikiquote-parser/domenech/internals"
   "launchpad.net/xmlpath"
+
   "os"
-  "sort"
   "strings"
 )
 
@@ -31,63 +33,12 @@ func (cmd *Command) ArgOrElse(key string, def string) string {
   return ret
 }
 
-// type Book struct {
-//   Title  string
-//   Author string
-//   Editor string
-//   Year   string
-//   Page   string
-//   Isbn   string
-// }
-
-// type Quote struct {
-//   Text   string
-//   Author string
-//   Book   Book
-// }
-
-// Thank you andrew https://groups.google.com/d/msg/golang-nuts/FT7cjmcL7gw/Gj4_aEsE_IsJ
-// A data structure to hold a key/value pair.
-type Pair struct {
-  Key   string
-  Value int
-}
-
-// A slice of Pairs that implements sort.Interface to sort by Value.
-type PairList []Pair
-
-func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p PairList) Len() int           { return len(p) }
-func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
-
-// A function to turn a map into a PairList, then sort and return it.
-func sortMapByValue(m map[string]int) PairList {
-  p := make(PairList, len(m))
-  i := 0
-  for k, v := range m {
-    p[i] = Pair{k, v}
-    i += 1
-  }
-  sort.Sort(sort.Reverse(p))
-  return p
-}
-
-func cleanup(in string) string {
-  return strings.Replace(
-    strings.Replace(
-      strings.Replace(
-        strings.Replace(
-          strings.Replace(in, "[[", "", -1), "]]", "", -1),
-        "<poem>", "", -1),
-      "</poem>", "", -1),
-    "\n", " ", -1)
-}
-
 type nodeType int
 
 const (
   quote = nodeType(iota)
   source
+  link
   unknownType
 )
 
@@ -102,35 +53,38 @@ func normalizedType(n Node) nodeType {
     default:
       return unknownType
     }
-  } else {
-    return unknownType
+  } else if n.Typ == NodeLink {
+    if strings.Index(n.StringParamOrEmpty("link"), "Catégorie:") == 0 {
+      return link
+    }
   }
+  return unknownType
 }
 
-type Quote struct {
+type QuoteNode struct {
   source Node
   quote  Node
 }
 
-func (q *Quote) nonEmpty() bool {
+func (q *QuoteNode) nonEmpty() bool {
   return q.source.Typ != NodeEmpty && q.quote.Typ != NodeEmpty
 }
 
-func (q *Quote) title() string {
+func (q *QuoteNode) title() string {
   return q.source.StringParamOrEmpty("titre")
 }
 
-func (q *Quote) isbn() string {
+func (q *QuoteNode) isbn() string {
   return q.source.StringParamOrEmpty("ISBN")
 }
 
-func (q *Quote) authorText() string {
+func (q *QuoteNode) authorText() string {
   return q.source.StringParamOrEmpty("auteur")
 }
 
 var MAX_QUOTE_LENGTH = 100
 
-func (q *Quote) valid() bool {
+func (q *QuoteNode) valid() bool {
   valid := q.nonEmpty() && q.authorText() != "" && len(q.quoteString()) < MAX_QUOTE_LENGTH
   if !valid {
     reason := ""
@@ -147,7 +101,7 @@ func (q *Quote) valid() bool {
   return valid
 }
 
-func (q *Quote) quoteString() string {
+func (q *QuoteNode) quoteString() string {
   if len(q.quote.Params) == 1 {
     return q.quote.Params[0].StringRepresentation()
   } else {
@@ -156,7 +110,7 @@ func (q *Quote) quoteString() string {
   return ""
 }
 
-func (q *Quote) StringRepresentation(category string) string {
+func (q *QuoteNode) StringRepresentation(category string) string {
 
   var authortext string
 
@@ -168,27 +122,38 @@ func (q *Quote) StringRepresentation(category string) string {
   return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", category, isbn, authortext, title, quotetext)
 }
 
-func ExtractQuotes(nodes Nodes, theme string) {
-  var q Quote = Quote{source: EmptyNode(), quote: EmptyNode()}
+func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string) {
+  var q QuoteNode = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
   count := 0
+
+  page := internals.Page{Title: theme}
+  db.FirstOrCreate(&page, page)
 
   for _, node := range nodes {
     switch normalizedType(node) {
+    case link:
+      catName := node.StringParamOrEmpty("link")[11:]
+      categ := internals.Category{Text: catName}
+      db.FirstOrCreate(&categ, categ)
+      fmt.Println(categ)
+      db.Model(&page).Association("Categories").Append(categ)
     case quote:
       q.quote = node
     case source:
       q.source = node
     }
     if q.nonEmpty() {
-      if q.valid() {
-        count += 1
-        fmt.Println(q.StringRepresentation(theme))
-      } else {
-        glog.V(2).Infoln("Ignoring quote")
-      }
-      q = Quote{source: EmptyNode(), quote: EmptyNode()}
+      count += 1
+
+      quote := internals.Quote{Text: q.quoteString()}
+      db.FirstOrCreate(&quote, quote)
+      db.Model(&page).Association("Quotes").Append(quote)
+      fmt.Println(q.StringRepresentation(theme))
+      q = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
     }
   }
+  fmt.Println(page)
+  db.Save(&page)
 }
 
 func main() {
@@ -198,9 +163,9 @@ func main() {
   titleXPath := xmlpath.MustCompile("title")
 
   //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  fi, err := os.Open("sample5.xml")
+  //fi, err := os.Open("sample5.xml")
   //fi, err := os.Open("sample.xml")
-  //fi, err := os.Open("sample1.xml")
+  fi, err := os.Open("sample2.xml")
 
   if err != nil {
 
@@ -220,13 +185,18 @@ func main() {
     glog.Fatal(err)
   }
   iter := pageXPath.Iter(root)
+
+  db := internals.Connect()
+
   for iter.Next() {
     page := iter.Node()
     content, _ := textXPath.String(page)
     title, _ := titleXPath.String(page)
 
-    glog.V(2).Infof("XOXOXOXO - Entering %s", title)
-    tokens := Tokenize(content)
-    ExtractQuotes(Parse(tokens), title)
+    if strings.Index(title, "Modèle:") == -1 && strings.Index(title, "Catégorie:") == -1 {
+      glog.V(1).Infof("Entering %s", title)
+      tokens := Tokenize(content)
+      ExtractQuoteNodes(db, Parse(tokens), title)
+    }
   }
 }

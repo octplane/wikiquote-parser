@@ -5,7 +5,7 @@ import (
   "flag"
   "fmt"
   "github.com/golang/glog"
-  . "github.com/octplane/wikiquote-parser"
+  . "github.com/octplane/wikiQuoteNode-parser"
   "launchpad.net/xmlpath"
   "math"
   "os"
@@ -41,7 +41,7 @@ func (cmd *Command) ArgOrElse(key string, def string) string {
 //   Isbn   string
 // }
 
-// type Quote struct {
+// type QuoteNodeNode struct {
 //   Text   string
 //   Author string
 //   Book   Book
@@ -87,7 +87,7 @@ func cleanup(in string) string {
 type nodeType int
 
 const (
-  quote = nodeType(iota)
+  QuoteNodeNode = nodeType(iota)
   source
   unknownType
 )
@@ -96,7 +96,7 @@ func normalizedType(n Node) nodeType {
   if n.Typ == NodeTemplate {
     switch n.StringParam("name") {
     case "citation", "Citation":
-      return quote
+      return QuoteNodeNode
     case "Réf Livre", "Réf Pub", "Réf Article":
       return source
 
@@ -108,52 +108,52 @@ func normalizedType(n Node) nodeType {
   }
 }
 
-type Quote struct {
-  source Node
-  quote  Node
+type QuoteNodeNode struct {
+  source        Node
+  QuoteNodeNode Node
 }
 
-func (q *Quote) nonEmpty() bool {
-  return q.source.Typ != NodeEmpty && q.quote.Typ != NodeEmpty
+func (q *QuoteNodeNode) nonEmpty() bool {
+  return q.source.Typ != NodeEmpty && q.QuoteNodeNode.Typ != NodeEmpty
 }
 
-func (q *Quote) StringRepresentation(category string) string {
+func (q *QuoteNodeNode) StringRepresentation(category string) string {
 
-  var quotetext string
+  var QuoteNodeNodetext string
   var authortext string
 
-  if len(q.quote.Params) == 1 {
-    quotetext = q.quote.Params[0].StringRepresentation()
+  if len(q.QuoteNodeNode.Params) == 1 {
+    QuoteNodeNodetext = q.QuoteNodeNode.Params[0].StringRepresentation()
   } else {
-    quotetext = q.quote.StringParamOrEmpty("citation")
+    QuoteNodeNodetext = q.QuoteNodeNode.StringParamOrEmpty("citation")
   }
-  quotetext = quotetext[0:int(math.Min(float64(len(quotetext)), 40))]
+  QuoteNodeNodetext = QuoteNodeNodetext[0:int(math.Min(float64(len(QuoteNodeNodetext)), 40))]
 
   authortext = q.source.StringParamOrEmpty("auteur")
   title := q.source.StringParamOrEmpty("titre")
   isbn := q.source.StringParamOrEmpty("ISBN")
 
-  return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", category, isbn, authortext, title, quotetext)
+  return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", category, isbn, authortext, title, QuoteNodeNodetext)
 }
 
-func ExtractQuotes(nodes Nodes, theme string) {
-  var q Quote = Quote{source: EmptyNode(), quote: EmptyNode()}
+func ExtractQuoteNodeNodes(nodes Nodes, theme string) {
+  var q QuoteNodeNode = QuoteNodeNode{source: EmptyNode(), QuoteNodeNode: EmptyNode()}
   count := 0
 
   for _, node := range nodes {
     switch normalizedType(node) {
-    case quote:
-      q.quote = node
+    case QuoteNodeNode:
+      q.QuoteNodeNode = node
     case source:
       q.source = node
     }
     if q.nonEmpty() {
       count += 1
       fmt.Println(q.StringRepresentation(theme))
-      q = Quote{source: EmptyNode(), quote: EmptyNode()}
+      q = QuoteNodeNode{source: EmptyNode(), QuoteNodeNode: EmptyNode()}
     }
   }
-  fmt.Printf("Found %d quotes\n", count)
+  fmt.Printf("Found %d QuoteNodeNodes\n", count)
 }
 
 func main() {
@@ -162,7 +162,7 @@ func main() {
   textXPath := xmlpath.MustCompile(("revision/text"))
   titleXPath := xmlpath.MustCompile("title")
 
-  //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
+  //fi, err := os.Open("frwikiQuoteNodeNode-20140622-pages-articles-multistream.xml")
   //fi, err := os.Open("sample3.xml")
   fi, err := os.Open("sample.xml")
   //fi, err := os.Open("sample1.xml")
@@ -191,6 +191,6 @@ func main() {
     title, _ := titleXPath.String(page)
 
     tokens := Tokenize(content)
-    ExtractQuotes(Parse(tokens), title)
+    ExtractQuoteNodeNodes(Parse(tokens), title)
   }
 }
