@@ -106,6 +106,7 @@ func (p *parser) scanSubArgumentsUntil(node *Node, stop token) {
   defer func() {
     if err := recover(); err != nil {
       ret = p.handleParseError(err, ret)
+      node.Params = append(node.Params, ret)
     }
   }()
 

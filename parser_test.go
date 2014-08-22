@@ -291,3 +291,11 @@ func TestPacha(t *testing.T) {
   p := Parse(Tokenize(doc))
   assertEqual(t, "Node count", 1, len(p))
 }
+
+func TestAccueil(t *testing.T) {
+  //  doc := "{{TemplateName|nice text{{début cadre|rouge}} {{{!}} }} Remaining text"
+  doc := "{{TemplateName|before{{{!}}after}} Remaining text"
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Error node present", 1, len(p[0].Params))
+
+}
