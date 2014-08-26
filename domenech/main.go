@@ -9,6 +9,9 @@ import (
   . "github.com/octplane/wikiquote-parser"
   "github.com/octplane/wikiquote-parser/domenech/internals"
   "launchpad.net/xmlpath"
+  "log"
+  "net/http"
+  _ "net/http/pprof"
 
   "os"
   "strings"
@@ -128,6 +131,7 @@ func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string) {
 
   page := internals.Page{Title: theme}
   db.FirstOrCreate(&page, page)
+  quotes := make([]internals.Quote, 0)
 
   for _, node := range nodes {
     switch normalizedType(node) {
@@ -135,7 +139,6 @@ func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string) {
       catName := node.StringParamOrEmpty("link")[11:]
       categ := internals.Category{Text: catName}
       db.FirstOrCreate(&categ, categ)
-      fmt.Println(categ)
       db.Model(&page).Association("Categories").Append(categ)
     case quote:
       q.quote = node
@@ -145,27 +148,32 @@ func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string) {
     if q.nonEmpty() {
       count += 1
 
-      quote := internals.Quote{Text: q.quoteString()}
+      quote := internals.Quote{Text: q.quoteString(), Author: q.authorText(), Isbn: q.isbn(), Booktitle: q.title()}
       db.FirstOrCreate(&quote, quote)
-      db.Model(&page).Association("Quotes").Append(quote)
-      fmt.Println(q.StringRepresentation(theme))
+      quotes = append(quotes, quote)
       q = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
     }
   }
-  fmt.Println(page)
+
+  db.Model(&page).Association("Quotes").Append(quotes)
   db.Save(&page)
 }
 
 func main() {
+
+  go func() {
+    log.Println(http.ListenAndServe("localhost:6060", nil))
+  }()
+
   flag.Parse()
   pageXPath := xmlpath.MustCompile("/mediawiki/page")
   textXPath := xmlpath.MustCompile(("revision/text"))
   titleXPath := xmlpath.MustCompile("title")
 
-  //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
+  fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
   //fi, err := os.Open("sample5.xml")
   //fi, err := os.Open("sample.xml")
-  fi, err := os.Open("sample2.xml")
+  //fi, err := os.Open("sample2.xml")
 
   if err != nil {
 

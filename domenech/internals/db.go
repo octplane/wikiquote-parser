@@ -23,8 +23,11 @@ type Category struct {
 }
 
 type Quote struct {
-  Id   int64
-  Text string `sql:"size:1000"`
+  Id        int64
+  Text      string `sql:"size:1000"`
+  Author    string `sql:"size:1000"`
+  Booktitle string `sql:"size:1000"`
+  Isbn      string `sql:"size:15"`
 }
 
 func Connect() gorm.DB {
