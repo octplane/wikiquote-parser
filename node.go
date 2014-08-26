@@ -20,13 +20,18 @@ type Node struct {
 
 // Return the Node text content, without any decoration
 func (n *Node) StringRepresentation() string {
+  glog.V(2).Infof("stringRepresentation for %+v", n)
   switch n.Typ {
   case NodeText, NodeInvalid:
     return n.Val
   case NodeLink:
     return n.StringParamOrEmpty("link")
   case NodeTemplate:
-    return n.Params[0].StringRepresentation()
+    if len(n.Params) > 0 {
+      return n.Params[0].StringRepresentation()
+    } else {
+      return ""
+    }
   default:
     return ""
   }

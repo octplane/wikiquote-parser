@@ -301,7 +301,7 @@ func TestAccueil(t *testing.T) {
 }
 
 func TestTemplateRendering(t *testing.T) {
-  doc := "{{Citation|citation={{Personnage|Hello}} world}}"
+  doc := "{{Citation|citation={{Personnage|Hello}} world{{tab}}}}"
   p := Parse(Tokenize(doc))
   assertEqual(t, "Template is rendered correctly as string", "Hello world", p[0].StringParamOrEmpty("citation"))
 

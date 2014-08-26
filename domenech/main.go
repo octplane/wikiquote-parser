@@ -170,8 +170,8 @@ func main() {
   textXPath := xmlpath.MustCompile(("revision/text"))
   titleXPath := xmlpath.MustCompile("title")
 
-  fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  //fi, err := os.Open("sample5.xml")
+  //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
+  fi, err := os.Open("sample6.xml")
   //fi, err := os.Open("sample.xml")
   //fi, err := os.Open("sample2.xml")
 
@@ -201,7 +201,10 @@ func main() {
     content, _ := textXPath.String(page)
     title, _ := titleXPath.String(page)
 
-    if strings.Index(title, "Modèle:") == -1 && strings.Index(title, "Catégorie:") == -1 {
+    if strings.Index(title, "Modèle:") == -1 &&
+      strings.Index(title, "Catégorie:") == -1 &&
+      strings.Index(title, "MediaWiki:") == -1 &&
+      strings.Index(title, "Aide:") == -1 {
       glog.V(1).Infof("Entering %s", title)
       tokens := Tokenize(content)
       ExtractQuoteNodes(db, Parse(tokens), title)
