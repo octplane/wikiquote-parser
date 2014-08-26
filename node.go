@@ -25,6 +25,8 @@ func (n *Node) StringRepresentation() string {
     return n.Val
   case NodeLink:
     return n.StringParamOrEmpty("link")
+  case NodeTemplate:
+    return n.Params[0].StringRepresentation()
   default:
     return ""
   }
@@ -63,6 +65,7 @@ func (n *Node) StringParam(k string) string {
 }
 
 func (n *Node) StringParamOrEmpty(k string) string {
+  glog.V(2).Infof("StringParamOrEmpty for %s", k)
   v, ok := n.NamedParams[k]
   if ok {
     ret := v.StringRepresentation()

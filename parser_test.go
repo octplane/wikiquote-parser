@@ -299,3 +299,10 @@ func TestAccueil(t *testing.T) {
   assertEqual(t, "Error node present", 1, len(p[0].Params))
 
 }
+
+func TestTemplateRendering(t *testing.T) {
+  doc := "{{Citation|citation={{Personnage|Hello}} world}}"
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Template is rendered correctly as string", "Hello world", p[0].StringParamOrEmpty("citation"))
+
+}
