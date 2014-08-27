@@ -25,7 +25,11 @@ func (n *Node) StringRepresentation() string {
   case NodeText, NodeInvalid:
     return n.Val
   case NodeLink:
-    return n.StringParamOrEmpty("link")
+    if len(n.Params) > 0 {
+      return n.Params[0].StringRepresentation()
+    } else {
+      return n.StringParamOrEmpty("link")
+    }
   case NodeTemplate:
     if len(n.Params) > 0 {
       return n.Params[0].StringRepresentation()
@@ -59,12 +63,7 @@ func (n *Node) StringParam(k string) string {
   if !ok {
     glog.V(2).Infof("Unable to extract parameter \"%s\" for node %s", k, n.String())
   } else {
-    if len(param) > 0 {
-      return param[0].Val
-    } else {
-      glog.V(2).Infof("Parameter %s is of length 0 for node %s", k, n.String())
-      panic("Something is wrong here")
-    }
+    return param.StringRepresentation()
   }
   return ""
 }
@@ -90,6 +89,7 @@ const (
   NodeText
   NodeTitle
   NodeLink
+  NodeELink
   NodeTemplate
   NodePlaceholder
   NodeEq
@@ -103,6 +103,8 @@ func (n nodeType) String() string {
     return "Text"
   case NodeLink:
     return "Link"
+  case NodeELink:
+    return "ELink"
   case NodeTemplate:
     return "Template"
   case NodeEq:

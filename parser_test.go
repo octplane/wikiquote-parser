@@ -30,13 +30,13 @@ func assertException(t *testing.T, desc string, cls inspectableClass) {
 func TestTokenizer1(t *testing.T) {
   text := "Bar baz baz"
   toks := Tokenize(fmt.Sprintf("%s\n", text))
-  assertEqual(t, "number of tokens", 3, len(toks))
+  assertEqual(t, "number of tokens", 7, len(toks))
 }
 
 func TestTokenizer2(t *testing.T) {
   text := "Bar baz baz"
   toks := Tokenize(fmt.Sprintf("====%s====\n", text))
-  assertEqual(t, "number of tokens", 11, len(toks))
+  assertEqual(t, "number of tokens", 15, len(toks))
 }
 
 func TestEqual(t *testing.T) {
@@ -66,7 +66,7 @@ func TestLinkParser(t *testing.T) {
   assertEqual(t, "Node count", 1, len(tree))
   assertEqual(t, "Node type", nodeType(NodeLink).String(), tree[0].Typ.String())
   assertEqual(t, "Link", lnk, tree[0].StringParam("link"))
-  assertEqual(t, "Text link", text, tree[0].Params[0][0].Val)
+  assertEqual(t, "Text link", text, tree[0].Params[0].StringRepresentation())
 }
 
 func TestTokenize(t *testing.T) {
@@ -146,9 +146,7 @@ func TestTemplate2(t *testing.T) {
   if tree[0].StringParam("name") != temp {
     t.Errorf("Unexpected name, expected name to %q, got %q", temp, tree[0].StringParam("name"))
   }
-  if tree[0].Params[0][0].Val != txt {
-    t.Errorf("Unexpected value to %q, got %q", txt, tree[0].Val)
-  }
+  assertEqual(t, "txt value", txt, tree[0].Params[0].StringRepresentation())
 }
 
 func TestTemplate3(t *testing.T) {
@@ -167,9 +165,8 @@ func TestTemplate3(t *testing.T) {
   if tree[0].StringParam("name") != temp {
     t.Errorf("Unexpected name, expected name: wanted %q, got %q", temp, tree[0].StringParam("name"))
   }
-  if tree[0].StringParam("citation") != txt {
-    t.Errorf("Unexpected citation namedParams: wanted %q, got %q", txt, tree[0].StringParam("citation"))
-  }
+  assertEqual(t, "Template citation param", txt, tree[0].StringParam("citation"))
+
   if tree[0].StringParam("author") != aut {
     t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].StringParam("author"))
   }
@@ -194,13 +191,8 @@ func TestTemplate4(t *testing.T) {
   if tree[0].StringParam("name") != temp {
     t.Errorf("Unexpected name, expected name: wanted %q, got %q", temp, tree[0].StringParam("name"))
   }
-  if tree[0].StringParam("citation") != txt {
-    t.Errorf("Unexpected citation namedParams: wanted %q, got %q", txt, tree[0].StringParam("citation"))
-  }
-
-  if tree[0].NamedParams["author"][0].NamedParams["link"][0].Val != aut {
-    t.Errorf("Unexpected author param: wanted %q, got %q", aut, tree[0].NamedParams["author"][1].NamedParams["link"][0].Val)
-  }
+  assertEqual(t, "Citation Parameter", txt, tree[0].StringParamOrEmpty("citation"))
+  assertEqual(t, "Author Parameter", aut, tree[0].StringParamOrEmpty("author"))
 }
 
 func TestComplexTemplate(t *testing.T) {
@@ -208,9 +200,11 @@ func TestComplexTemplate(t *testing.T) {
   txt := fmt.Sprintf("{{Citation|%s|thumb|author=Nobody}}", match)
   tree := Parse(Tokenize(txt))
 
-  if tree[0].Params[0][0].Val != match {
-    t.Errorf("Invalid parameter, got %q, expected %q", match, tree[0].Params[0][0].Val)
-  }
+  assertEqual(t, "Anonymous Body", match, tree[0].Params[0].StringRepresentation())
+
+  // if tree[0].Params[0][0].Val != match {
+  //   t.Errorf("Invalid parameter, got %q, expected %q", match, tree[0].Params[0][0].Val)
+  // }
 }
 
 func TestComplexLink(t *testing.T) {
@@ -218,9 +212,7 @@ func TestComplexLink(t *testing.T) {
   txt := fmt.Sprintf("[[File:1873 Pierre Auguste Cot - Spring.jpg|thumb|upright=1.8|%s]]", linkText)
 
   tree := Parse(Tokenize(txt))
-  if tree[0].Params[1][0].Val != linkText {
-    t.Errorf("Invalid parameter, got %q, expected %q", linkText, tree[0].Params[1][0].Val)
-  }
+  assertEqual(t, "Parameter", linkText, tree[0].Params[1].StringRepresentation())
 }
 
 func TestTemplateInLink(t *testing.T) {
@@ -228,7 +220,7 @@ func TestTemplateInLink(t *testing.T) {
   txt := fmt.Sprintf("[[File: secret service|%s]]", linkText)
   tree := Parse(Tokenize(txt))
 
-  assertEqual(t, "citation first parameter", "jamais sans mon poney", tree[0].Params[0][0].Params[0][0].Val)
+  assertEqual(t, "citation first parameter", "jamais sans mon poney", tree[0].Params[0].StringRepresentation())
 
 }
 
@@ -237,7 +229,7 @@ func TestNextBlockParser(t *testing.T) {
   toks := Tokenize(txt)
   parser := create_parser("top", toks, nil, nil, abortBehavior)
   parser.nextBlock()
-  assertEqual(t, "Next block position", 3, parser.pos)
+  assertEqual(t, "Next block position", 9, parser.pos)
 }
 
 func TestNoNextBlockParser(t *testing.T) {
@@ -252,7 +244,7 @@ func TestSyntaxError(t *testing.T) {
   doc := "Some line\n==== Malformed title===\n\nAnother Block"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 5, len(p))
+  assertEqual(t, "Node count", 9, len(p))
 
 }
 
@@ -261,7 +253,7 @@ func TestSyntaxError2(t *testing.T) {
   doc := "Some line\n==== Malformed title===\n\nAnother Block\n\n== This title is broken = \n\nEnd of block"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 10, len(p))
+  assertEqual(t, "Node count", 18, len(p))
 }
 
 func TestSyntaxError3(t *testing.T) {
@@ -269,7 +261,7 @@ func TestSyntaxError3(t *testing.T) {
   doc := "Nice valid text\n{{Template Name|and this complex parameter will never be closed"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 3, len(p))
+  assertEqual(t, "Node count", 7, len(p))
 }
 
 func TestSyntaxError4(t *testing.T) {
@@ -277,7 +269,7 @@ func TestSyntaxError4(t *testing.T) {
   doc := "===broken title==\nNice valid text"
 
   p := Parse(Tokenize(doc))
-  assertEqual(t, "Node count", 3, len(p))
+  assertEqual(t, "Node count", 7, len(p))
 }
 
 func TestNowikiMarkup(t *testing.T) {
@@ -304,5 +296,20 @@ func TestTemplateRendering(t *testing.T) {
   doc := "{{Citation|citation={{Personnage|Hello}} world{{tab}}}}"
   p := Parse(Tokenize(doc))
   assertEqual(t, "Template is rendered correctly as string", "Hello world", p[0].StringParamOrEmpty("citation"))
+
+}
+
+func TestLinkRendering(t *testing.T) {
+  doc := "[[w:pipo|Text]]"
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Link is rendered correctly as string", "Text", p.StringRepresentation())
+
+}
+
+func TestLink2Rendering(t *testing.T) {
+  doc := "[http://url.com/ \"Minor Threat\" by Aaron Gell in ''GQ'' (March 2006)]"
+  p := Parse(Tokenize(doc))
+  assertEqual(t, "Parse external url", "http://url.com/", p[0].StringParamOrEmpty("link"))
+  assertEqual(t, "Parse external link title", "\"Minor Threat\" by Aaron Gell in ''GQ'' (March 2006)", p[0].Params[0].StringRepresentation())
 
 }

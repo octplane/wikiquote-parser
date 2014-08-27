@@ -20,10 +20,13 @@ const (
   templateEnd
   linkStart
   linkEnd
+  tokenELnkStart
+  tokenELnkEnd
   variableName
   itemText
   itemPipe
   tokenEq
+  tokenSp
   tokenLF
   controlStruct
   tokenNowikiStart
@@ -36,10 +39,13 @@ const leftTemplate = "{{"
 const rightTemplate = "}}"
 const leftPlaceholder = "{{{"
 const rightPlaceholder = "}}}"
+const leftExtLink = "["
+const rightExtLink = "]"
 const leftLink = "[["
 const rightLink = "]]"
 const pipe = "|"
 const eq = "="
+const sp = " "
 const lf = "\n"
 const nowikistart = "<nowiki>"
 const nowikiend = "</nowiki>"
@@ -54,9 +60,12 @@ func init() {
     rightTemplate:    templateEnd,
     rightPlaceholder: placeholderEnd,
     leftLink:         linkStart,
+    leftExtLink:      tokenELnkStart,
+    rightExtLink:     tokenELnkEnd,
     rightLink:        linkEnd,
     pipe:             itemPipe,
     eq:               tokenEq,
+    sp:               tokenSp,
     lf:               tokenLF,
     nowikistart:      tokenNowikiStart,
     nowikiend:        tokenNowikiEnd,
@@ -67,9 +76,12 @@ func init() {
     rightTemplate,
     rightPlaceholder,
     leftLink,
+    leftExtLink,
     rightLink,
+    rightExtLink,
     pipe,
     eq,
+    sp,
     lf,
     nowikistart,
     nowikiend,
@@ -84,7 +96,7 @@ func (i item) String() string {
   case itemError:
     return i.Val
   case templateStart, templateEnd, linkStart, linkEnd, placeholderStart, placeholderEnd,
-    tokenNowikiStart, tokenNowikiEnd:
+    tokenNowikiStart, tokenNowikiEnd, tokenELnkStart, tokenELnkEnd, tokenSp, tokenEq:
     return fmt.Sprintf("%s", desc)
   case itemText:
     if len(i.Val) > 40 {
@@ -97,8 +109,6 @@ func (i item) String() string {
     return fmt.Sprintf("%s", desc)
   case controlStruct:
     return fmt.Sprintf("%s %s", desc, i.Val)
-  case tokenEq:
-    return "="
   default:
     return fmt.Sprintf("%s %s", desc, i.Val)
   }
@@ -122,6 +132,10 @@ func (itt token) String() string {
     return "{{{"
   case placeholderEnd:
     return "}}}"
+  case tokenELnkStart:
+    return "["
+  case tokenELnkEnd:
+    return "]"
   case itemText:
     return "Text"
   case itemPipe:
@@ -130,6 +144,8 @@ func (itt token) String() string {
     return "Control struct"
   case tokenEq:
     return "="
+  case tokenSp:
+    return " "
   case tokenNowikiStart:
     return "<noWiki>"
   case tokenNowikiEnd:

@@ -75,6 +75,29 @@ func (p *parser) ParseLink() Node {
   return ret
 }
 
+func (p *parser) ParseELink() Node {
+  ret := Node{Typ: NodeELink, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
+
+  p.eat(tokenELnkStart)
+  linkObject, consumed := ParseWithEnv(fmt.Sprintf("%s::ELink", p.name),
+    p,
+    p.items[p.pos:],
+    []token{tokenSp, tokenELnkEnd}, nil, ignoreSectionBehavior)
+  ret.NamedParams["link"] = linkObject
+
+  p.consume(consumed)
+
+  if p.currentItem().Typ == tokenSp {
+    p.eatCurrentItem()
+  }
+
+  consumed = ScanSubArgumentsUntil("link", p, &ret, tokenELnkEnd)
+
+  // outer loop will eat last item automatically
+  p.consume(consumed - 1)
+  return ret
+}
+
 func (p *parser) ParseTemplate() (ret Node) {
   ret = Node{Typ: NodeTemplate, NamedParams: make(map[string]Nodes), Params: make([]Nodes, 0)}
   glog.V(2).Infoln("Parsing a template")

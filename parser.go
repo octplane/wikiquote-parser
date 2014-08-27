@@ -270,6 +270,8 @@ func (p *parser) parse() (ret Nodes) {
       n = Node{Typ: NodeText, Val: it.Val}
     case linkStart:
       n = p.ParseLink()
+    case tokenELnkStart:
+      n = p.ParseELink()
     case templateStart:
       n = p.ParseTemplate()
     case placeholderStart:
@@ -279,6 +281,8 @@ func (p *parser) parse() (ret Nodes) {
       if p.pos == 0 {
         n = p.parseTitle()
       }
+    case tokenSp:
+      n = Node{Typ: NodeText, Val: " "}
     case tokenLF:
       p.consume(1)
       if p.currentItem().Typ == tokenEq {
