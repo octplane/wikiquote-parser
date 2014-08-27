@@ -9,11 +9,8 @@ import (
   . "github.com/octplane/wikiquote-parser"
   "github.com/octplane/wikiquote-parser/domenech/internals"
   "launchpad.net/xmlpath"
-  "log"
-  "net/http"
-  _ "net/http/pprof"
-
   "os"
+  "strconv"
   "strings"
 )
 
@@ -125,12 +122,13 @@ func (q *QuoteNode) StringRepresentation(category string) string {
   return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", category, isbn, authortext, title, quotetext)
 }
 
-func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string) {
+func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string, id int) {
   var q QuoteNode = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
   count := 0
 
-  page := internals.Page{Title: theme}
-  db.FirstOrCreate(&page, page)
+  page := internals.Page{Title: theme, ImportId: id}
+  _ = page
+  //db.FirstOrCreate(&page, page)
   quotes := make([]internals.Quote, 0)
 
   for _, node := range nodes {
@@ -138,8 +136,9 @@ func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string) {
     case link:
       catName := node.StringParamOrEmpty("link")[11:]
       categ := internals.Category{Text: catName}
-      db.FirstOrCreate(&categ, categ)
-      db.Model(&page).Association("Categories").Append(categ)
+      _ = categ
+      // db.FirstOrCreate(&categ, categ)
+      // db.Model(&page).Association("Categories").Append(categ)
     case quote:
       q.quote = node
     case source:
@@ -149,29 +148,36 @@ func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string) {
       count += 1
 
       quote := internals.Quote{Text: q.quoteString(), Author: q.authorText(), Isbn: q.isbn(), Booktitle: q.title()}
-      db.FirstOrCreate(&quote, quote)
+      // db.FirstOrCreate(&quote, quote)
       quotes = append(quotes, quote)
       q = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
     }
   }
 
-  db.Model(&page).Association("Quotes").Append(quotes)
-  db.Save(&page)
+  // db.Model(&page).Association("Quotes").Append(quotes)
+  // db.Save(&page)
 }
+
+var (
+  db          gorm.DB
+  pageXPath   *xmlpath.Path
+  pageIdXPath *xmlpath.Path
+  textXPath   *xmlpath.Path
+  titleXPath  *xmlpath.Path
+)
+
+var pageChannel = make(chan *xmlpath.Node)
 
 func main() {
 
-  go func() {
-    log.Println(http.ListenAndServe("localhost:6060", nil))
-  }()
-
   flag.Parse()
-  pageXPath := xmlpath.MustCompile("/mediawiki/page")
-  textXPath := xmlpath.MustCompile(("revision/text"))
-  titleXPath := xmlpath.MustCompile("title")
+  pageXPath = xmlpath.MustCompile("/mediawiki/page")
+  pageIdXPath = xmlpath.MustCompile("id")
+  textXPath = xmlpath.MustCompile(("revision/text"))
+  titleXPath = xmlpath.MustCompile("title")
 
-  //fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  fi, err := os.Open("sample6.xml")
+  fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
+  //fi, err := os.Open("sample6.xml")
   //fi, err := os.Open("sample.xml")
   //fi, err := os.Open("sample2.xml")
 
@@ -194,20 +200,40 @@ func main() {
   }
   iter := pageXPath.Iter(root)
 
-  db := internals.Connect()
+  db = internals.Connect()
+
+  go Multiplex()
+  go Multiplex()
+  go Multiplex()
+  go Multiplex()
 
   for iter.Next() {
     page := iter.Node()
-    content, _ := textXPath.String(page)
-    title, _ := titleXPath.String(page)
+    pageChannel <- page
 
-    if strings.Index(title, "Modèle:") == -1 &&
-      strings.Index(title, "Catégorie:") == -1 &&
-      strings.Index(title, "MediaWiki:") == -1 &&
-      strings.Index(title, "Aide:") == -1 {
-      glog.V(1).Infof("Entering %s", title)
-      tokens := Tokenize(content)
-      ExtractQuoteNodes(db, Parse(tokens), title)
-    }
   }
+}
+
+func Multiplex() {
+  for page := range pageChannel {
+    extractAndTokenize(page)
+  }
+}
+
+func extractAndTokenize(page *xmlpath.Node) {
+
+  content, _ := textXPath.String(page)
+  id, _ := pageIdXPath.String(page)
+  title, _ := titleXPath.String(page)
+
+  if strings.Index(title, "Modèle:") == -1 &&
+    strings.Index(title, "Catégorie:") == -1 &&
+    strings.Index(title, "MediaWiki:") == -1 &&
+    strings.Index(title, "Aide:") == -1 {
+    glog.V(1).Infof("Entering %s", title)
+    tokens := Tokenize(content)
+    i, _ := strconv.Atoi(id)
+    ExtractQuoteNodes(db, Parse(tokens), title, i)
+  }
+  fmt.Printf("Done %s\n", title)
 }
