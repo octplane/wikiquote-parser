@@ -17,12 +17,6 @@ type parser struct {
   onError      behaviorOnError
 }
 
-func (p *parser) CreateParser(name string, tokens []item, exitTypes []token, exitSequence []token, onError behaviorOnError) *parser {
-  ret := create_parser(name, tokens, exitTypes, exitSequence, onError)
-  ret.parent = p
-  return ret
-}
-
 func create_parser(name string, tokens []item, exitTypes []token, exitSequence []token, onError behaviorOnError) *parser {
   p := &parser{
     name:         name,
@@ -84,6 +78,21 @@ func (p *parser) log(format string, params ...interface{}) {
   parms := []interface{}{p.name}
   parms = append(parms, params...)
   glog.V(2).Infof("[%s] "+format, parms...)
+}
+
+func Cleanup(source string) string {
+  return Parse(Tokenize(source)).StringRepresentation()
+}
+
+func Parse(items []item) (ret Nodes) {
+  nodes, _ := ParseWithConsumed(items)
+  return nodes
+}
+
+func (p *parser) CreateParser(name string, tokens []item, exitTypes []token, exitSequence []token, onError behaviorOnError) *parser {
+  ret := create_parser(name, tokens, exitTypes, exitSequence, onError)
+  ret.parent = p
+  return ret
 }
 
 func ScanSubArgumentsUntil(name string, parent *parser, node *Node, stop token) (consumed int) {
@@ -212,11 +221,6 @@ func ParseWithEnv(name string, parent *parser, items []item, exitTypes []token, 
   ret = p.parse()
   p.log("%s: Consumed %d / %d\n", name, p.consumed, len(p.items))
   return ret, p.consumed
-}
-
-func Parse(items []item) (ret Nodes) {
-  nodes, _ := ParseWithConsumed(items)
-  return nodes
 }
 
 func ParseWithConsumed(items []item) (ret Nodes, consumed int) {

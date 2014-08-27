@@ -24,7 +24,7 @@ func (n *Node) StringRepresentation() string {
   switch n.Typ {
   case NodeText, NodeInvalid:
     return n.Val
-  case NodeLink:
+  case NodeLink, NodeELink:
     if len(n.Params) > 0 {
       return n.Params[0].StringRepresentation()
     } else {
