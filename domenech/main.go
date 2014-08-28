@@ -2,16 +2,19 @@ package main
 
 import (
   "bufio"
+  "crypto/sha1"
+  "encoding/csv"
   "flag"
   "fmt"
   "github.com/golang/glog"
-  "github.com/jinzhu/gorm"
   . "github.com/octplane/wikiquote-parser"
   "github.com/octplane/wikiquote-parser/domenech/internals"
+  "io"
   "launchpad.net/xmlpath"
   "os"
   "strconv"
   "strings"
+  "time"
 )
 
 type Command struct {
@@ -122,14 +125,9 @@ func (q *QuoteNode) StringRepresentation(category string) string {
   return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", category, isbn, authortext, title, quotetext)
 }
 
-func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string, id int) {
+func ExtractQuoteNodes(nodes Nodes, theme string, id int) {
   var q QuoteNode = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
   count := 0
-
-  page := internals.Page{Title: theme, ImportId: id}
-  _ = page
-  //db.FirstOrCreate(&page, page)
-  quotes := make([]internals.Quote, 0)
 
   for _, node := range nodes {
     switch normalizedType(node) {
@@ -137,8 +135,6 @@ func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string, id int) {
       catName := node.StringParamOrEmpty("link")[11:]
       categ := internals.Category{Text: catName}
       _ = categ
-      // db.FirstOrCreate(&categ, categ)
-      // db.Model(&page).Association("Categories").Append(categ)
     case quote:
       q.quote = node
     case source:
@@ -147,19 +143,22 @@ func ExtractQuoteNodes(db gorm.DB, nodes Nodes, theme string, id int) {
     if q.nonEmpty() {
       count += 1
 
-      quote := internals.Quote{Text: q.quoteString(), Author: q.authorText(), Isbn: q.isbn(), Booktitle: q.title()}
-      // db.FirstOrCreate(&quote, quote)
-      quotes = append(quotes, quote)
-      q = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
+      quote := q.quoteString()
+      author := q.authorText()
+      title := q.title()
+      isbn := q.isbn()
+
+      h := sha1.New()
+
+      io.WriteString(h, quote)
+      sha1 := fmt.Sprintf("%x", h.Sum(nil))
+
+      quoteWriter.Write([]string{sha1, strconv.Itoa(id), theme, quote, author, title, isbn})
     }
   }
-
-  // db.Model(&page).Association("Quotes").Append(quotes)
-  // db.Save(&page)
 }
 
 var (
-  db          gorm.DB
   pageXPath   *xmlpath.Path
   pageIdXPath *xmlpath.Path
   textXPath   *xmlpath.Path
@@ -167,6 +166,10 @@ var (
 )
 
 var pageChannel = make(chan *xmlpath.Node)
+
+var quoteWriter *csv.Writer
+
+const layout = "20060102_1504"
 
 func main() {
 
@@ -191,6 +194,26 @@ func main() {
       panic(err)
     }
   }()
+
+  t := time.Now()
+  prefix := t.Format(layout)
+  fname := fmt.Sprintf("quotes-fr-%s.csv", prefix)
+
+  // open output file
+  glog.V(1).Infof("Creating file %s", fname)
+  quoteCSV, err := os.Create(fname)
+  if err != nil {
+    panic(err)
+  }
+  // close fo on exit and check for its returned error
+  defer func() {
+    if err := quoteCSV.Close(); err != nil {
+      panic(err)
+    }
+  }()
+
+  quoteWriter = csv.NewWriter(quoteCSV)
+
   // make a read buffer
   r := bufio.NewReader(fi)
 
@@ -199,8 +222,6 @@ func main() {
     glog.Fatal(err)
   }
   iter := pageXPath.Iter(root)
-
-  db = internals.Connect()
 
   go Multiplex()
   go Multiplex()
@@ -233,7 +254,6 @@ func extractAndTokenize(page *xmlpath.Node) {
     glog.V(1).Infof("Entering %s", title)
     tokens := Tokenize(content)
     i, _ := strconv.Atoi(id)
-    ExtractQuoteNodes(db, Parse(tokens), title, i)
+    ExtractQuoteNodes(Parse(tokens), title, i)
   }
-  fmt.Printf("Done %s\n", title)
 }

@@ -2,16 +2,18 @@ package main
 
 import (
   "bufio"
+  "crypto/sha1"
+  "encoding/csv"
   "flag"
   "fmt"
   "github.com/golang/glog"
-  "github.com/jinzhu/gorm"
   . "github.com/octplane/wikiquote-parser"
-  "github.com/octplane/wikiquote-parser/domenech/internals"
+  "io"
   "launchpad.net/xmlpath"
   "os"
   "strconv"
   "strings"
+  "time"
 )
 
 type Command struct {
@@ -122,12 +124,12 @@ func (q *QuoteNode) StringRepresentation(category string) string {
   return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", category, isbn, authortext, title, quotetext)
 }
 
-func ExtractQuoteNodes(db gorm.DB, content string, theme string, id int) {
+func ExtractQuoteNodes(content string, theme string, id int) {
   // http://en.wikiquote.org/wiki/Wikiquote:Templates#Formatting_guidelines
   lines := strings.Split(content, "\n")
   for ix, line := range lines {
     if strings.Index(line, "* ") == 0 {
-      quote := line[2:]
+      quote := Cleanup(line[2:])
       if len(lines) > ix+1 {
         source := lines[ix+1]
         if strings.Index(source, "** ") == 0 {
@@ -135,8 +137,12 @@ func ExtractQuoteNodes(db gorm.DB, content string, theme string, id int) {
           if strings.Index(source, "** [[") == 0 && strings.Index(source, "]], ") > 0 {
             author := Cleanup(source[3 : strings.Index(source, "]], ")+3])
             title := Cleanup(source[strings.Index(source, "]], ")+4:])
-            _ = quote
-            fmt.Println(quote, author, title)
+
+            h := sha1.New()
+            io.WriteString(h, quote)
+            sha1 := fmt.Sprintf("%x", h.Sum(nil))
+
+            quoteWriter.Write([]string{sha1, strconv.Itoa(id), theme, quote, author, title, ""})
           }
         }
       }
@@ -145,7 +151,6 @@ func ExtractQuoteNodes(db gorm.DB, content string, theme string, id int) {
 }
 
 var (
-  db          gorm.DB
   pageXPath   *xmlpath.Path
   pageIdXPath *xmlpath.Path
   textXPath   *xmlpath.Path
@@ -153,6 +158,10 @@ var (
 )
 
 var pageChannel = make(chan *xmlpath.Node)
+
+var quoteWriter *csv.Writer
+
+const layout = "20060102_1504"
 
 func main() {
 
@@ -168,7 +177,6 @@ func main() {
   //fi, err := os.Open("sample2.xml")
 
   if err != nil {
-
     panic(err)
   }
   // close fi on exit and check for its returned error
@@ -177,6 +185,26 @@ func main() {
       panic(err)
     }
   }()
+
+  t := time.Now()
+  prefix := t.Format(layout)
+  fname := fmt.Sprintf("quotes-en-%s.csv", prefix)
+
+  // open output file
+  glog.V(1).Infof("Creating file %s", fname)
+  quoteCSV, err := os.Create(fname)
+  if err != nil {
+    panic(err)
+  }
+  // close fo on exit and check for its returned error
+  defer func() {
+    if err := quoteCSV.Close(); err != nil {
+      panic(err)
+    }
+  }()
+
+  quoteWriter = csv.NewWriter(quoteCSV)
+
   // make a read buffer
   r := bufio.NewReader(fi)
 
@@ -186,12 +214,10 @@ func main() {
   }
   iter := pageXPath.Iter(root)
 
-  db = internals.Connect()
-
   go Multiplex()
-  // go Multiplex()
-  // go Multiplex()
-  // go Multiplex()
+  go Multiplex()
+  go Multiplex()
+  go Multiplex()
 
   for iter.Next() {
     page := iter.Node()
@@ -212,13 +238,13 @@ func extractAndTokenize(page *xmlpath.Node) {
   id, _ := pageIdXPath.String(page)
   title, _ := titleXPath.String(page)
 
-  if strings.Index(title, "Modèle:") == -1 &&
+  if strings.Index(title, "Template:") == -1 &&
     strings.Index(title, "Catégorie:") == -1 &&
     strings.Index(title, "MediaWiki:") == -1 &&
     strings.Index(title, "Aide:") == -1 {
     glog.V(1).Infof("Entering %s", title)
     i, _ := strconv.Atoi(id)
 
-    ExtractQuoteNodes(db, content, title, i)
+    ExtractQuoteNodes(content, title, i)
   }
 }
