@@ -45,11 +45,12 @@ Note that there is no formal linking between the quote and its reference, except
 
 Read the source and adapt.
 
+- domenech selects quotes based on their structure (look at multiplex())
+- hodgson does almost the same
+
 ```
 go run domenech/main.go
 ```
-
-Will read sample.xml and output the structured version of what it can find.
 
 # License
 
