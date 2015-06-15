@@ -43,8 +43,10 @@ Note that there is no formal linking between the quote and its reference, except
 
 # Usage
 
+Read the source and adapt.
+
 ```
-go run parser.go
+go run domenech/main.go
 ```
 
 Will read sample.xml and output the structured version of what it can find.

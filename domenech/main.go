@@ -179,8 +179,8 @@ func main() {
   textXPath = xmlpath.MustCompile(("revision/text"))
   titleXPath = xmlpath.MustCompile("title")
 
-  fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  //fi, err := os.Open("sample6.xml")
+  // fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
+  fi, err := os.Open("sample6.xml")
   //fi, err := os.Open("sample.xml")
   //fi, err := os.Open("sample2.xml")
 
