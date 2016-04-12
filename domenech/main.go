@@ -185,7 +185,6 @@ func main() {
   //fi, err := os.Open("sample2.xml")
 
   if err != nil {
-
     panic(err)
   }
   // close fi on exit and check for its returned error
@@ -253,6 +252,8 @@ func extractAndTokenize(page *xmlpath.Node) {
     strings.Index(title, "Aide:") == -1 {
     glog.V(1).Infof("Entering %s", title)
     tokens := Tokenize(content)
+    glog.V(3).Infof("Tokens %s", tokens)
+
     i, _ := strconv.Atoi(id)
     ExtractQuoteNodes(Parse(tokens), title, i)
   }

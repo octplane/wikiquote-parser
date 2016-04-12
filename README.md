@@ -2,7 +2,7 @@
 
 Wikiquote XML Parser.
 
-Preliminary version for the frwikiquote multistream xml. Writtent in go-lang
+Preliminary version for the frwikiquote multistream xml. Written in go-lang.
 
 # Letter of intention
 
