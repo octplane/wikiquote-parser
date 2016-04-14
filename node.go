@@ -20,7 +20,7 @@ type Node struct {
 
 // Return the Node text content, without any decoration
 func (n *Node) StringRepresentation() string {
-  glog.V(2).Infof("stringRepresentation for %+v", n)
+  glog.V(7).Infof("stringRepresentation for %+v", n)
   switch n.Typ {
   case NodeText, NodeInvalid:
     return n.Val

@@ -152,8 +152,10 @@ func ExtractQuoteNodes(nodes Nodes, theme string, id int) {
 
       io.WriteString(h, quote)
       sha1 := fmt.Sprintf("%x", h.Sum(nil))
+      glog.V(2).Infof("Quote: %s", quote)
 
       quoteWriter.Write([]string{sha1, strconv.Itoa(id), theme, quote, author, title, isbn})
+      q = QuoteNode{source: EmptyNode(), quote: EmptyNode()}
     }
   }
 }
@@ -241,7 +243,6 @@ func Multiplex(c chan bool) {
     }
     extractAndTokenize(page)
   }
-  glog.V(2).Infof("FINISHED")
   c <- true
 }
 
@@ -258,7 +259,6 @@ func extractAndTokenize(page *xmlpath.Node) {
     strings.Index(title, "Aide:") == -1 {
     glog.V(1).Infof("Entering %s", title)
     tokens := Tokenize(content)
-    glog.V(3).Infof("Tokens %s", tokens)
 
     i, _ := strconv.Atoi(id)
     ExtractQuoteNodes(Parse(tokens), title, i)

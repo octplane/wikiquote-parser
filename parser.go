@@ -77,7 +77,7 @@ func (p *parser) eatUntil(typ token) {
 func (p *parser) log(format string, params ...interface{}) {
   parms := []interface{}{p.name}
   parms = append(parms, params...)
-  glog.V(2).Infof("[%s] "+format, parms...)
+  glog.V(7).Infof("[%s] "+format, parms...)
 }
 
 func Cleanup(source string) string {
