@@ -43,6 +43,7 @@ func (l *lexer) emit(t token) {
   } else {
     it = item{t, l.input[l.start:l.pos]}
   }
+  fmt.Printf("Emitting item: %s", it)
 
   l.items <- it
   l.start = l.pos
@@ -51,6 +52,7 @@ func (l *lexer) emit(t token) {
 // run lexes the input by executing state functions until
 // the state is nil.
 func (l *lexer) run() {
+  fmt.Printf("Run !")
   for state := lexText; state != nil; {
     state = state(l)
   }
@@ -176,10 +178,13 @@ func Tokenize(body string) tokens {
   l := lex("", body)
   go l.run()
 
+  fmt.Printf("Lexer has started")
+
   var it item
   halt := false
   for !halt {
     it = l.nextItem()
+    fmt.Printf("Item %s", it)
     ret = append(ret, it)
     switch it.Typ {
     case tokenEOF:
@@ -187,6 +192,7 @@ func Tokenize(body string) tokens {
       break
     }
   }
+  fmt.Printf("We have finished")
   return ret
 }
 

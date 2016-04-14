@@ -179,8 +179,8 @@ func main() {
   textXPath = xmlpath.MustCompile(("revision/text"))
   titleXPath = xmlpath.MustCompile("title")
 
-  // fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
-  fi, err := os.Open("sample6.xml")
+  fi, err := os.Open("frwikiquote-20140622-pages-articles-multistream.xml")
+  //fi, err := os.Open("sample6.xml")
   //fi, err := os.Open("sample.xml")
   //fi, err := os.Open("sample2.xml")
 
@@ -222,22 +222,27 @@ func main() {
   }
   iter := pageXPath.Iter(root)
 
-  go Multiplex()
-  go Multiplex()
-  go Multiplex()
-  go Multiplex()
+  done := make(chan bool)
+  go Multiplex(done)
 
   for iter.Next() {
     page := iter.Node()
     pageChannel <- page
-
   }
+  pageChannel <- nil
+
+  <-done
 }
 
-func Multiplex() {
+func Multiplex(c chan bool) {
   for page := range pageChannel {
+    if page == nil {
+      break
+    }
     extractAndTokenize(page)
   }
+  glog.V(2).Infof("FINISHED")
+  c <- true
 }
 
 func extractAndTokenize(page *xmlpath.Node) {
@@ -245,6 +250,7 @@ func extractAndTokenize(page *xmlpath.Node) {
   content, _ := textXPath.String(page)
   id, _ := pageIdXPath.String(page)
   title, _ := titleXPath.String(page)
+  glog.V(3).Infof("title is %s", title)
 
   if strings.Index(title, "Modèle:") == -1 &&
     strings.Index(title, "Catégorie:") == -1 &&
@@ -256,5 +262,7 @@ func extractAndTokenize(page *xmlpath.Node) {
 
     i, _ := strconv.Atoi(id)
     ExtractQuoteNodes(Parse(tokens), title, i)
+  } else {
+    glog.V(3).Infof("Ignoring %s", title)
   }
 }
