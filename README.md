@@ -1,3 +1,10 @@
+# UNMAINTAINED
+
+Du to the poor quality of the english corpus data structure, I have lost interest in the project and I'm leaving it here as is as a reference for others developers. Feel free to reuse the code or part of the parser.
+
+Bye and thanks for all the fish.
+
+
 # wikiquote-parser
 
 Wikiquote XML Parser.
